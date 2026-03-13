@@ -46,7 +46,7 @@ import {
 } from "./utils/dataStore";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { useIsMobile } from "./utils/useIsMobile";
-import { calculatePrice, calculateTotalPrice, formatWon } from "./utils/priceCalculator";
+import { calculateTotalPrice, formatWon } from "./utils/priceCalculator";
 
 const TOTAL_STEPS = 4;
 const BANK_INFO = {
@@ -63,43 +63,31 @@ function buildProductList(
   products: RegisteredProduct[],
   sets: ResolvedSetProduct[]
 ): Product[] {
-  const singles: Product[] = products.map((p) => {
-    const prices = calculatePrice(p.listPrice);
-    return {
-      id: p.id,
-      isbn: p.isbn,
-      name: p.name,
-      publisher: p.publisher,
-      listPrice: p.listPrice,
-      salePrice: prices.finalPrice, // 새로운 가격 계산 방식 적용
-      imageUrl: getBookImageUrl(p.isbn),
-      type: "single" as const,
-    };
-  });
-  const setProducts: Product[] = sets.map((s) => {
-    const prices = calculatePrice(s.listPrice);
-    return {
-      id: s.id,
-      isbn: s.items[0]?.isbn || "",
-      name: s.name,
-      publisher: s.items.map((i) => i.publisher).filter((v, i, a) => a.indexOf(v) === i).join(", "),
-      listPrice: s.listPrice,
-      salePrice: prices.finalPrice, // 새로운 가격 계산 방식 적용
-      imageUrl: s.items[0] ? getBookImageUrl(s.items[0].isbn) : "",
-      type: "set" as const,
-      setItems: s.items.map((i) => i.name),
-      setItemDetails: s.items.map((i) => {
-        const itemPrices = calculatePrice(i.listPrice);
-        return {
-          isbn: i.isbn,
-          name: i.name,
-          publisher: i.publisher,
-          listPrice: i.listPrice,
-          salePrice: itemPrices.finalPrice, // 새로운 가격 계산 방식 적용
-        };
-      }),
-    };
-  });
+  const singles: Product[] = products.map((p) => ({
+    id: p.id,
+    isbn: p.isbn,
+    name: p.name,
+    publisher: p.publisher,
+    listPrice: p.listPrice,
+    imageUrl: getBookImageUrl(p.isbn),
+    type: "single" as const,
+  }));
+  const setProducts: Product[] = sets.map((s) => ({
+    id: s.id,
+    isbn: s.items[0]?.isbn || "",
+    name: s.name,
+    publisher: s.items.map((i) => i.publisher).filter((v, i, a) => a.indexOf(v) === i).join(", "),
+    listPrice: s.listPrice,
+    imageUrl: s.items[0] ? getBookImageUrl(s.items[0].isbn) : "",
+    type: "set" as const,
+    setItems: s.items.map((i) => i.name),
+    setItemDetails: s.items.map((i) => ({
+      isbn: i.isbn,
+      name: i.name,
+      publisher: i.publisher,
+      listPrice: i.listPrice,
+    })),
+  }));
   return [...setProducts, ...singles];
 }
 
@@ -243,7 +231,7 @@ export default function App() {
   const finalizeOrder = async () => {
     const orderProducts = selectedProductData.map((p) => ({
       id: p.id, isbn: p.isbn, name: p.name, publisher: p.publisher,
-      listPrice: p.listPrice, salePrice: p.salePrice, imageUrl: p.imageUrl,
+      listPrice: p.listPrice, imageUrl: p.imageUrl,
       type: p.type, setItems: p.setItems,
       quantity: quantities[p.id] || 1,
     }));
@@ -364,55 +352,55 @@ export default function App() {
         return (
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-2">
-              <Person24Regular className="text-indigo-500" />
-              <h3 className="text-gray-800">고객 정보</h3>
+              <Person24Regular className="text-indigo-600" />
+              <h3 className="text-gray-900">고객 정보</h3>
             </div>
             <div>
-              <label className="block text-gray-600 text-[13px] mb-1.5">수신인 이름 <span className="text-red-400">*</span></label>
+              <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">수신인 이름 <span className="text-red-500">*</span></label>
               <div className="relative">
-                <Person24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Person24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="홍길동"
-                  className="w-full rounded-xl border border-white/40 bg-white/40 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-700 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200/40" />
+                  className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
               </div>
             </div>
             <div>
-              <label className="block text-gray-600 text-[13px] mb-1.5">연락처 <span className="text-red-400">*</span></label>
+              <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">연락처 <span className="text-red-500">*</span></label>
               <div className="relative">
-                <Call24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Call24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                 <input type="tel" value={phone} onChange={handlePhoneChange} placeholder="010-1234-5678"
-                  className="w-full rounded-xl border border-white/40 bg-white/40 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-700 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200/40" />
+                  className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
               </div>
             </div>
             <div>
-              <label className="block text-gray-600 text-[13px] mb-1.5">이메일 <span className="text-gray-400 text-[11px]">(선택 — 입력 시 주문 확인 메일 발송)</span></label>
+              <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">이메일 <span className="text-gray-400 text-[11px] font-normal">(선택 — 입력 시 주문 확인 메일 발송)</span></label>
               <div className="relative">
-                <Mail24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Mail24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@email.com"
-                  className="w-full rounded-xl border border-white/40 bg-white/40 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-700 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200/40" />
+                  className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
               </div>
             </div>
             <div>
-              <label className="block text-gray-600 text-[13px] mb-1.5">배송 주소 <span className="text-red-400">*</span></label>
+              <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">배송 주소 <span className="text-red-500">*</span></label>
               <AddressSearch value={address ? `[${zipCode}] ${address}` : ""} onChange={(addr, zip) => { setAddress(addr); setZipCode(zip); }} />
             </div>
             <AnimatePresence>
               {address && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={springTransition}>
                   <div className="mb-4">
-                    <label className="block text-gray-600 text-[13px] mb-1.5">우편번호</label>
+                    <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">우편번호</label>
                     <div className="relative">
-                      <Location24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input type="text" value={zipCode} readOnly className="w-full rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-500 outline-none cursor-default" />
+                      <Location24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                      <input type="text" value={zipCode} readOnly className="w-full rounded-xl border border-gray-200 bg-gray-50 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-600 outline-none cursor-default" />
                     </div>
                   </div>
-                  <label className="block text-gray-600 text-[13px] mb-1.5">상세 주소</label>
+                  <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">상세 주소</label>
                   <input type="text" value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} placeholder="동/호수, 층, 건물명 등"
-                    className="w-full rounded-xl border border-white/40 bg-white/40 backdrop-blur-sm py-2.5 px-4 text-gray-700 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200/40" />
+                    className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 px-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="rounded-xl border border-indigo-100/50 bg-indigo-50/20 backdrop-blur-sm p-3">
-              <p className="text-indigo-500 text-[11px]">
+            <div className="rounded-xl border border-indigo-300 bg-indigo-50 backdrop-blur-sm p-3">
+              <p className="text-indigo-700 text-[11px] font-medium">
                 * 배송은 우체국 택배(기업계약)를 통해 발송됩니다. 정확한 주소와 연락처를 입력해 주세요.
               </p>
             </div>
@@ -465,7 +453,7 @@ export default function App() {
                 )}
                 
                 {/* 판매가 계산 영역 — 콤팩트, 항상 하단 고정 */}
-                <div className="shrink-0 mt-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-3 sm:px-4 py-2 sm:py-2.5 text-white shadow-lg">
+                <div className="shrink-0 mt-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 px-3 sm:px-4 py-2 sm:py-2.5 text-white shadow-lg">
                   <div className="flex items-center justify-between text-[11px] sm:text-[12px]">
                     <div className="flex items-center gap-2">
                       <span>선택 <span className="font-semibold">{selectedCount}종</span></span>
@@ -492,8 +480,8 @@ export default function App() {
         return (
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-2">
-              <CreditCardPerson24Regular className="text-indigo-500" />
-              <h3 className="text-gray-800">결제 정보</h3>
+              <CreditCardPerson24Regular className="text-indigo-600" />
+              <h3 className="text-gray-900">결제 정보</h3>
             </div>
 
             {/* 데스크톱 2컬럼: 결제수단(좌) + 현금영수증/금액(우) — 계좌이체 선택 시 */}
@@ -501,17 +489,17 @@ export default function App() {
               {/* 좌측: 결제 수단 */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-600 text-[13px] mb-3">결제 수단</label>
+                  <label className="block text-gray-700 text-[13px] font-semibold mb-3">결제 수단</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button type="button" onClick={() => setPaymentMethod("card")}
-                      className={`flex flex-col items-center gap-2 rounded-xl border py-4 px-3 transition-all duration-200 cursor-pointer ${
-                        paymentMethod === "card" ? "border-indigo-400/60 bg-indigo-50/50 text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.1)]" : "border-white/40 bg-white/30 text-gray-500 hover:bg-white/50"
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 py-4 px-3 transition-all duration-200 cursor-pointer ${
+                        paymentMethod === "card" ? "border-indigo-600 bg-indigo-600 text-white shadow-[0_4px_16px_rgba(79,70,229,0.3)]" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
                       }`}>
                       <Payment24Regular className="w-6 h-6" /><span className="text-[14px]">카드 결제</span>
                     </button>
                     <button type="button" onClick={() => setPaymentMethod("bank")}
-                      className={`flex flex-col items-center gap-2 rounded-xl border py-4 px-3 transition-all duration-200 cursor-pointer ${
-                        paymentMethod === "bank" ? "border-indigo-400/60 bg-indigo-50/50 text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.1)]" : "border-white/40 bg-white/30 text-gray-500 hover:bg-white/50"
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 py-4 px-3 transition-all duration-200 cursor-pointer ${
+                        paymentMethod === "bank" ? "border-indigo-600 bg-indigo-600 text-white shadow-[0_4px_16px_rgba(79,70,229,0.3)]" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
                       }`}>
                       <BuildingBank24Regular className="w-6 h-6" /><span className="text-[14px]">계좌 이체</span>
                     </button>
@@ -545,7 +533,7 @@ export default function App() {
                   {paymentMethod === "bank" && (
                     <motion.div key="bank-account" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }} transition={springTransition} className="overflow-hidden">
-                      <div className="rounded-xl border border-indigo-200/50 bg-indigo-50/40 backdrop-blur-sm p-4 text-center space-y-1.5">
+                      <div className="rounded-xl border border-indigo-200/40 bg-indigo-50/30 backdrop-blur-sm p-4 text-center space-y-1.5">
                         <BuildingBank24Regular className="w-6 h-6 text-indigo-500 mx-auto" />
                         <p className="text-indigo-600">{BANK_INFO.bank}</p>
                         <button type="button" onClick={() => {
@@ -554,7 +542,7 @@ export default function App() {
                           document.body.appendChild(ta); ta.select();
                           try { document.execCommand("copy"); toast.success("계좌번호가 복사되었습니다."); } catch { toast.info(`계좌번호: ${text}`); }
                           document.body.removeChild(ta);
-                        }} className="inline-flex items-center gap-1.5 text-gray-800 font-mono tracking-wider text-[16px] hover:text-indigo-600 transition-colors cursor-pointer">
+                        }} className="inline-flex items-center gap-1.5 text-gray-700 font-mono tracking-wider text-[16px] hover:text-indigo-600 transition-colors cursor-pointer">
                           {BANK_INFO.account}
                           <Copy24Regular className="w-4 h-4 text-gray-400" />
                         </button>
@@ -571,14 +559,14 @@ export default function App() {
                   <motion.div key="bank-right" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }} transition={springTransition} className="space-y-4">
                     <div className="space-y-3">
-                      <label className="block text-gray-600 text-[13px] mb-2">현금영수증 유형</label>
+                      <label className="block text-gray-700 text-[13px] font-semibold mb-2">현금영수증 유형</label>
                       <div className="space-y-2">
                         <button type="button" onClick={() => { if (receiptType !== "none") { setReceiptType("none"); setReceiptNumber(""); } }}
-                          className={`w-full flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 transition-all duration-200 cursor-pointer ${
-                            receiptType === "none" ? "border-indigo-400/60 bg-indigo-50/50 text-indigo-600" : "border-white/40 bg-white/30 text-gray-500 hover:bg-white/50"
+                          className={`w-full flex items-center justify-center gap-2 rounded-xl border-2 py-2.5 px-3 transition-all duration-200 cursor-pointer ${
+                            receiptType === "none" ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
                           }`}>
-                          <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${receiptType === "none" ? "border-indigo-500" : "border-gray-300"}`}>
-                            {receiptType === "none" && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                          <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${receiptType === "none" ? "border-white" : "border-gray-300"}`}>
+                            {receiptType === "none" && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                           </span>
                           <span className="text-[13px]">미발급</span>
                         </button>
@@ -589,11 +577,11 @@ export default function App() {
                           ]).map((opt) => (
                             <button key={opt.value} type="button"
                               onClick={() => { if (receiptType !== opt.value) { setReceiptType(opt.value); setReceiptNumber(""); } }}
-                              className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 transition-all duration-200 cursor-pointer ${
-                                receiptType === opt.value ? "border-indigo-400/60 bg-indigo-50/50 text-indigo-600" : "border-white/40 bg-white/30 text-gray-500 hover:bg-white/50"
+                              className={`flex items-center justify-center gap-2 rounded-xl border-2 py-2.5 px-3 transition-all duration-200 cursor-pointer ${
+                                receiptType === opt.value ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
                               }`}>
-                              <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${receiptType === opt.value ? "border-indigo-500" : "border-gray-300"}`}>
-                                {receiptType === opt.value && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                              <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${receiptType === opt.value ? "border-white" : "border-gray-300"}`}>
+                                {receiptType === opt.value && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                               </span>
                               <span className="text-[13px]">{opt.label}</span>
                             </button>
@@ -602,17 +590,17 @@ export default function App() {
                       </div>
                       {receiptType !== "none" && (
                         <div>
-                          <label className="block text-gray-600 text-[13px] mb-1.5">
+                          <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">
                             {receiptType === "personal" ? "휴대폰 번호" : "사업자등록번호"}
                           </label>
                           <div className="relative">
-                            <Receipt24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <Receipt24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                             {receiptType === "personal" ? (
                               <input type="tel" value={receiptNumber} onChange={handleReceiptPhoneChange} placeholder="010-0000-0000"
-                                className="w-full rounded-xl border border-white/40 bg-white/40 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-700 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200/40" />
+                                className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                             ) : (
                               <input type="text" value={receiptNumber} onChange={(e) => setReceiptNumber(formatBizNumber(e.target.value))} placeholder="000-00-00000"
-                                className="w-full rounded-xl border border-white/40 bg-white/40 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-700 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200/40" />
+                                className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                             )}
                           </div>
                         </div>
@@ -648,28 +636,28 @@ export default function App() {
         const visibleProducts = selectedProductData.slice(0, MAX_VISIBLE_PRODUCTS);
         const hiddenCount = selectedProductData.length - MAX_VISIBLE_PRODUCTS;
         const hiddenTotalPrice = hiddenCount > 0
-          ? selectedProductData.slice(MAX_VISIBLE_PRODUCTS).reduce((sum, p) => sum + p.salePrice * (quantities[p.id] || 1), 0)
+          ? selectedProductData.slice(MAX_VISIBLE_PRODUCTS).reduce((sum, p) => sum + p.listPrice * (quantities[p.id] || 1), 0)
           : 0;
 
         return (
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-2">
-              <CheckmarkCircle24Filled className="text-emerald-500 w-6 h-6" />
-              <h3 className="text-gray-800">주문 확인</h3>
+              <CheckmarkCircle24Filled className="text-emerald-600 w-6 h-6" />
+              <h3 className="text-gray-900">주문 확인</h3>
             </div>
 
             <div className={`${!isMobile ? "grid grid-cols-2 gap-5 items-stretch" : "space-y-5"}`}>
               {/* 좌측: 수신인 ~ 총 수량 */}
-              <div className="rounded-xl border border-white/40 bg-white/30 backdrop-blur-sm overflow-hidden flex flex-col">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/80 backdrop-blur-sm overflow-hidden flex flex-col">
                 <table className="w-full text-[13px]">
                   <tbody>
-                    <tr className="border-b border-white/30">
-                      <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap w-[90px]">수신인</td>
-                      <td className="px-4 py-2.5 text-gray-700">{name || <span className="text-red-400">미입력</span>}</td>
+                    <tr className="border-b border-gray-100">
+                      <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap w-[90px]">수신인</td>
+                      <td className="px-4 py-2.5 text-gray-800 font-medium">{name || <span className="text-red-500 font-medium">미입력</span>}</td>
                     </tr>
-                    <tr className="border-b border-white/30">
-                      <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">연락처</td>
-                      <td className="px-4 py-2.5 text-gray-700">{phone || <span className="text-red-400">미입력</span>}</td>
+                    <tr className="border-b border-gray-100">
+                      <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">연락처</td>
+                      <td className="px-4 py-2.5 text-gray-800 font-medium">{phone || <span className="text-red-500 font-medium">미입력</span>}</td>
                     </tr>
                     {email && (
                       <tr className="border-b border-white/30">
@@ -680,35 +668,35 @@ export default function App() {
                     <tr>
                       <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap align-top">배송주소</td>
                       <td className="px-4 py-2.5 text-gray-700">
-                        {address ? (<>[{zipCode}] {address}{addressDetail && <><br />{addressDetail}</>}</>) : <span className="text-red-400">미입력</span>}
+                        {address ? (<>[{zipCode}] {address}{addressDetail && <><br />{addressDetail}</>}</>) : <span className="text-red-500">미입력</span>}
                       </td>
                     </tr>
                   </tbody>
                 </table>
                 {/* 선택 상품 — flex-1로 남은 공간 채움 */}
-                <div className="flex-1 flex flex-col border-t border-white/20 bg-white/10">
+                <div className="flex-1 flex flex-col border-t border-white/30 bg-white/10">
                   <div className="flex-1 px-4 py-2.5">
                     <p className="text-gray-400 text-[12px] mb-2">선택 상품</p>
                     {selectedProductData.length > 0 ? (
                       <div className="space-y-1.5">
                         {visibleProducts.map((p) => (
                           <div key={p.id} className="flex items-center gap-2">
-                            <span className="text-gray-700 text-[13px] truncate min-w-0 flex-1">{p.name} <span className="text-gray-400">x{quantities[p.id] || 1}</span></span>
-                            <span className="text-indigo-600 text-[13px] shrink-0 whitespace-nowrap">{formatWon(p.salePrice * (quantities[p.id] || 1))}</span>
+                            <span className="text-gray-600 text-[13px] truncate min-w-0 flex-1">{p.name} <span className="text-gray-400">x{quantities[p.id] || 1}</span></span>
+                            <span className="text-indigo-600 text-[13px] shrink-0 whitespace-nowrap">{formatWon(p.listPrice * (quantities[p.id] || 1))}</span>
                           </div>
                         ))}
                         {hiddenCount > 0 && (
                           <div className="flex items-center gap-2 pt-0.5">
                             <span className="text-gray-400 text-[12px] italic">...외 {hiddenCount}종</span>
-                            <span className="text-indigo-400 text-[12px] shrink-0 whitespace-nowrap ml-auto">{formatWon(hiddenTotalPrice)}</span>
+                            <span className="text-indigo-500/70 text-[12px] shrink-0 whitespace-nowrap ml-auto">{formatWon(hiddenTotalPrice)}</span>
                           </div>
                         )}
                       </div>
-                    ) : <span className="text-red-400 text-[13px]">미선택</span>}
+                    ) : <span className="text-red-500 text-[13px]">미선택</span>}
                   </div>
                 </div>
                 {/* 총 수량 — 하단 고정 */}
-                <div className="border-t border-white/30 mt-auto bg-white/5">
+                <div className="border-t border-white/30 mt-auto bg-white/10">
                   <div className="flex items-center px-4 py-2.5 text-[13px]">
                     <span className="text-gray-400 w-[90px] shrink-0">총 수량</span>
                     <span className="text-gray-700 font-medium">{selectedCount}종 / {totalQuantity}개</span>
@@ -718,7 +706,7 @@ export default function App() {
 
               {/* 우측: 결제 금액 ~ 비밀번호 */}
               <div className="flex flex-col gap-4">
-                <div className="rounded-xl border border-white/40 bg-white/30 backdrop-blur-sm overflow-hidden flex-1">
+                <div className="rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm overflow-hidden flex-1">
                   <table className="w-full text-[13px]">
                     <tbody>
                       <tr className="border-b border-white/30">
@@ -832,10 +820,10 @@ export default function App() {
     <div className="relative min-h-screen flex flex-col">
       {/* BG */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100" />
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-200/40 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-pink-200/40 blur-[120px]" />
-        <div className="absolute top-[40%] right-[20%] w-[30%] h-[30%] rounded-full bg-purple-200/30 blur-[100px]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-indigo-50/60 to-purple-50/40" />
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-100/40 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-100/30 blur-[120px]" />
+        <div className="absolute top-[40%] right-[20%] w-[30%] h-[30%] rounded-full bg-sky-100/25 blur-[100px]" />
       </div>
 
       <Toaster position="top-center" richColors toastOptions={{ style: { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)" } }} />
@@ -849,10 +837,10 @@ export default function App() {
       <div className={`flex-1 flex flex-col items-center ${view === "main" || view === "lookup" || view === "admin" ? "justify-center" : "justify-start"} px-4 py-6 sm:py-10 transition-all duration-500`}>
         {/* Header */}
         <motion.div layout transition={springTransition} className="text-center mb-5 shrink-0">
-          <motion.div layout transition={springTransition} className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-white/50 backdrop-blur-xl border border-white/40 shadow-[0_4px_24px_rgba(0,0,0,0.06)] mb-2">
-            <Cart24Regular className="text-indigo-500 w-5 h-5" />
+          <motion.div layout transition={springTransition} className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-indigo-600 border border-indigo-700 shadow-[0_4px_16px_rgba(79,70,229,0.3)] mb-2">
+            <Cart24Regular className="text-white w-5 h-5" />
           </motion.div>
-          <motion.h1 layout transition={springTransition} className="text-gray-800 tracking-tight">{viewTitle[view]}</motion.h1>
+          <motion.h1 layout transition={springTransition} className="text-gray-900 tracking-tight">{viewTitle[view]}</motion.h1>
           <AnimatePresence mode="wait">
             {view === "main" && (
               <motion.p key="main-sub" initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} transition={springTransition}
@@ -870,9 +858,9 @@ export default function App() {
           isMobile ? (
             <div className="mb-4 shrink-0 flex items-center justify-center gap-2">
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className={`h-2 rounded-full transition-all duration-300 ${i === step ? "w-6 bg-indigo-500" : i < step ? "w-2 bg-indigo-400" : "w-2 bg-white/40"}`} />
+                <div key={i} className={`h-2 rounded-full transition-all duration-300 ${i === step ? "w-6 bg-indigo-500" : i < step ? "w-2 bg-indigo-400" : "w-2 bg-gray-200"}`} />
               ))}
-              <span className="ml-2 text-gray-500 text-[12px]">{step + 1} / {TOTAL_STEPS}</span>
+              <span className="ml-2 text-gray-400 text-[12px]">{step + 1} / {TOTAL_STEPS}</span>
             </div>
           ) : (
             <div className="w-full max-w-sm mb-5 shrink-0">
@@ -918,19 +906,19 @@ export default function App() {
               {view === "order" && step < TOTAL_STEPS && (
                 <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   transition={springTransition}
-                  className="flex items-center justify-between mt-3 pt-3 border-t border-white/20 shrink-0">
+                  className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200/60 shrink-0">
                   <button type="button" onClick={goPrev}
-                    className="flex items-center gap-1 rounded-lg border border-white/40 bg-white/30 hover:bg-white/50 backdrop-blur-sm px-3 py-2 text-gray-600 text-[13px] transition-all cursor-pointer">
+                    className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 px-3 py-2 text-gray-600 text-[13px] transition-all cursor-pointer">
                     <ArrowLeft24Regular className="w-3.5 h-3.5" />{step === 0 ? "메인" : "이전"}
                   </button>
                   {step < TOTAL_STEPS - 1 ? (
                     <button type="button" onClick={goNext}
-                      className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-2 text-white text-[13px] shadow-[0_4px_16px_rgba(99,102,241,0.25)] transition-all hover:shadow-[0_6px_24px_rgba(99,102,241,0.35)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
+                      className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-white text-[13px] shadow-[0_4px_16px_rgba(79,70,229,0.3)] transition-all hover:shadow-[0_6px_24px_rgba(79,70,229,0.4)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
                       다음<ArrowRight24Regular className="w-3.5 h-3.5" />
                     </button>
                   ) : (
                     <button type="button" onClick={handleSubmit}
-                      className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-white text-[13px] shadow-[0_4px_16px_rgba(16,185,129,0.25)] transition-all hover:shadow-[0_6px_24px_rgba(16,185,129,0.35)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
+                      className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-white text-[13px] shadow-[0_4px_16px_rgba(5,150,105,0.3)] transition-all hover:shadow-[0_6px_24px_rgba(5,150,105,0.4)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
                       <Send24Regular className="w-3.5 h-3.5" />주문 접수
                     </button>
                   )}
