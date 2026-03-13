@@ -495,44 +495,82 @@ export default function App() {
               <CreditCardPerson24Regular className="text-indigo-500" />
               <h3 className="text-gray-800">결제 정보</h3>
             </div>
-            <div>
-              <label className="block text-gray-600 text-[13px] mb-3">결제 수단</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setPaymentMethod("card")}
-                  className={`flex flex-col items-center gap-2 rounded-xl border py-4 px-3 transition-all duration-200 cursor-pointer ${
-                    paymentMethod === "card" ? "border-indigo-400/60 bg-indigo-50/50 text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.1)]" : "border-white/40 bg-white/30 text-gray-500 hover:bg-white/50"
-                  }`}>
-                  <Payment24Regular className="w-6 h-6" /><span className="text-[14px]">카드 결제</span>
-                </button>
-                <button type="button" onClick={() => setPaymentMethod("bank")}
-                  className={`flex flex-col items-center gap-2 rounded-xl border py-4 px-3 transition-all duration-200 cursor-pointer ${
-                    paymentMethod === "bank" ? "border-indigo-400/60 bg-indigo-50/50 text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.1)]" : "border-white/40 bg-white/30 text-gray-500 hover:bg-white/50"
-                  }`}>
-                  <BuildingBank24Regular className="w-6 h-6" /><span className="text-[14px]">계좌 이체</span>
-                </button>
-              </div>
-            </div>
-            <AnimatePresence mode="wait">
-              {paymentMethod === "bank" && (
-                <motion.div key="bank-section" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }} transition={springTransition} className="overflow-hidden">
-                  <div className="space-y-4">
-                    <div className="rounded-xl border border-indigo-200/50 bg-indigo-50/40 backdrop-blur-sm p-4 text-center space-y-1.5">
-                      <BuildingBank24Regular className="w-6 h-6 text-indigo-500 mx-auto" />
-                      <p className="text-indigo-600">{BANK_INFO.bank}</p>
-                      <button type="button" onClick={() => {
-                        const text = BANK_INFO.account.replace(/-/g, "");
-                        const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
-                        document.body.appendChild(ta); ta.select();
-                        try { document.execCommand("copy"); toast.success("계좌번호가 복사되었습니다."); } catch { toast.info(`계좌번호: ${text}`); }
-                        document.body.removeChild(ta);
-                      }} className="inline-flex items-center gap-1.5 text-gray-800 font-mono tracking-wider text-[16px] hover:text-indigo-600 transition-colors cursor-pointer">
-                        {BANK_INFO.account}
-                        <Copy24Regular className="w-4 h-4 text-gray-400" />
-                      </button>
-                      <p className="text-gray-500 text-[13px]">예금주: {BANK_INFO.holder}</p>
+
+            {/* 데스크톱 2컬럼: 결제수단(좌) + 현금영수증/금액(우) — 계좌이체 선택 시 */}
+            <div className={`${!isMobile && paymentMethod === "bank" ? "grid grid-cols-2 gap-5 items-start" : ""}`}>
+              {/* 좌측: 결제 수단 */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-600 text-[13px] mb-3">결제 수단</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => setPaymentMethod("card")}
+                      className={`flex flex-col items-center gap-2 rounded-xl border py-4 px-3 transition-all duration-200 cursor-pointer ${
+                        paymentMethod === "card" ? "border-indigo-400/60 bg-indigo-50/50 text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.1)]" : "border-white/40 bg-white/30 text-gray-500 hover:bg-white/50"
+                      }`}>
+                      <Payment24Regular className="w-6 h-6" /><span className="text-[14px]">카드 결제</span>
+                    </button>
+                    <button type="button" onClick={() => setPaymentMethod("bank")}
+                      className={`flex flex-col items-center gap-2 rounded-xl border py-4 px-3 transition-all duration-200 cursor-pointer ${
+                        paymentMethod === "bank" ? "border-indigo-400/60 bg-indigo-50/50 text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.1)]" : "border-white/40 bg-white/30 text-gray-500 hover:bg-white/50"
+                      }`}>
+                      <BuildingBank24Regular className="w-6 h-6" /><span className="text-[14px]">계좌 이체</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 카드 결제 시: 결제금액 좌측에 표시 */}
+                {paymentMethod === "card" && (
+                  <div className="rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm p-4 space-y-1">
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-gray-500">정가 합계</span>
+                      <span className="text-gray-500 line-through">{formatWon(totalPrices.listPrice)}</span>
                     </div>
-                    <div className="pt-3 border-t border-white/20 space-y-3">
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-gray-500">할인</span>
+                      <span className="text-red-500">-{formatWon(totalPrices.discountAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-gray-500">학원지원금</span>
+                      <span className="text-emerald-600">-{formatWon(totalPrices.schoolSupport)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-white/30">
+                      <span className="text-gray-700">결제 금액</span>
+                      <span className="text-indigo-600 font-medium">{formatWon(totalPrices.finalPrice)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 계좌이체 — 계좌 정보 (좌측) */}
+                <AnimatePresence mode="wait">
+                  {paymentMethod === "bank" && (
+                    <motion.div key="bank-account" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }} transition={springTransition} className="overflow-hidden">
+                      <div className="rounded-xl border border-indigo-200/50 bg-indigo-50/40 backdrop-blur-sm p-4 text-center space-y-1.5">
+                        <BuildingBank24Regular className="w-6 h-6 text-indigo-500 mx-auto" />
+                        <p className="text-indigo-600">{BANK_INFO.bank}</p>
+                        <button type="button" onClick={() => {
+                          const text = BANK_INFO.account.replace(/-/g, "");
+                          const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+                          document.body.appendChild(ta); ta.select();
+                          try { document.execCommand("copy"); toast.success("계좌번호가 복사되었습니다."); } catch { toast.info(`계좌번호: ${text}`); }
+                          document.body.removeChild(ta);
+                        }} className="inline-flex items-center gap-1.5 text-gray-800 font-mono tracking-wider text-[16px] hover:text-indigo-600 transition-colors cursor-pointer">
+                          {BANK_INFO.account}
+                          <Copy24Regular className="w-4 h-4 text-gray-400" />
+                        </button>
+                        <p className="text-gray-500 text-[13px]">예금주: {BANK_INFO.holder}</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* 우측: 현금영수증 + 결제금액 (계좌이체 시) */}
+              <AnimatePresence mode="wait">
+                {paymentMethod === "bank" && (
+                  <motion.div key="bank-right" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }} transition={springTransition} className="space-y-4">
+                    <div className="space-y-3">
                       <label className="block text-gray-600 text-[13px] mb-2">현금영수증 유형</label>
                       <div className="space-y-2">
                         <button type="button" onClick={() => { if (receiptType !== "none") { setReceiptType("none"); setReceiptNumber(""); } }}
@@ -580,119 +618,163 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <div className="rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm p-4 space-y-1">
-              <div className="flex justify-between text-[13px]">
-                <span className="text-gray-500">정가 합계</span>
-                <span className="text-gray-500 line-through">{formatWon(totalPrices.listPrice)}</span>
-              </div>
-              <div className="flex justify-between text-[13px]">
-                <span className="text-gray-500">할인</span>
-                <span className="text-red-500">-{formatWon(totalPrices.discountAmount)}</span>
-              </div>
-              <div className="flex justify-between text-[13px]">
-                <span className="text-gray-500">학원지원금</span>
-                <span className="text-emerald-600">-{formatWon(totalPrices.schoolSupport)}</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-white/30">
-                <span className="text-gray-700">결제 금액</span>
-                <span className="text-indigo-600 font-medium">{formatWon(totalPrices.finalPrice)}</span>
-              </div>
+                    <div className="rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm p-4 space-y-1">
+                      <div className="flex justify-between text-[13px]">
+                        <span className="text-gray-500">정가 합계</span>
+                        <span className="text-gray-500 line-through">{formatWon(totalPrices.listPrice)}</span>
+                      </div>
+                      <div className="flex justify-between text-[13px]">
+                        <span className="text-gray-500">할인</span>
+                        <span className="text-red-500">-{formatWon(totalPrices.discountAmount)}</span>
+                      </div>
+                      <div className="flex justify-between text-[13px]">
+                        <span className="text-gray-500">학원지원금</span>
+                        <span className="text-emerald-600">-{formatWon(totalPrices.schoolSupport)}</span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-white/30">
+                        <span className="text-gray-700">결제 금액</span>
+                        <span className="text-indigo-600 font-medium">{formatWon(totalPrices.finalPrice)}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         );
 
-      case 3:
+      case 3: {
+        const MAX_VISIBLE_PRODUCTS = 4;
+        const visibleProducts = selectedProductData.slice(0, MAX_VISIBLE_PRODUCTS);
+        const hiddenCount = selectedProductData.length - MAX_VISIBLE_PRODUCTS;
+        const hiddenTotalPrice = hiddenCount > 0
+          ? selectedProductData.slice(MAX_VISIBLE_PRODUCTS).reduce((sum, p) => sum + p.salePrice * (quantities[p.id] || 1), 0)
+          : 0;
+
         return (
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-2">
               <CheckmarkCircle24Filled className="text-emerald-500 w-6 h-6" />
               <h3 className="text-gray-800">주문 확인</h3>
             </div>
-            <div className="rounded-xl border border-white/40 bg-white/30 backdrop-blur-sm overflow-hidden">
-              <table className="w-full text-[13px]">
-                <tbody>
-                  <tr className="border-b border-white/30">
-                    <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap w-[90px]">수신인</td>
-                    <td className="px-4 py-2.5 text-gray-700">{name || <span className="text-red-400">미입력</span>}</td>
-                  </tr>
-                  <tr className="border-b border-white/30">
-                    <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">연락처</td>
-                    <td className="px-4 py-2.5 text-gray-700">{phone || <span className="text-red-400">미입력</span>}</td>
-                  </tr>
-                  {email && (
+
+            <div className={`${!isMobile ? "grid grid-cols-2 gap-5 items-stretch" : "space-y-5"}`}>
+              {/* 좌측: 수신인 ~ 총 수량 */}
+              <div className="rounded-xl border border-white/40 bg-white/30 backdrop-blur-sm overflow-hidden flex flex-col">
+                <table className="w-full text-[13px]">
+                  <tbody>
                     <tr className="border-b border-white/30">
-                      <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">이메일</td>
-                      <td className="px-4 py-2.5 text-gray-700">{email}</td>
+                      <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap w-[90px]">수신인</td>
+                      <td className="px-4 py-2.5 text-gray-700">{name || <span className="text-red-400">미입력</span>}</td>
                     </tr>
-                  )}
-                  <tr className="border-b border-white/30">
-                    <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap align-top">배송주소</td>
-                    <td className="px-4 py-2.5 text-gray-700">
-                      {address ? (<>[{zipCode}] {address}{addressDetail && <><br />{addressDetail}</>}</>) : <span className="text-red-400">미입력</span>}
-                    </td>
-                  </tr>
-                  <tr className="border-b border-white/30">
-                    <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap align-top">선택 상품</td>
-                    <td className="px-4 py-2.5">
-                      {selectedProductData.length > 0 ? (
-                        <div className="space-y-1">
-                          {selectedProductData.map((p) => (
-                            <div key={p.id} className="flex items-center gap-2">
-                              <span className="text-gray-700 truncate min-w-0 flex-1">{p.name} <span className="text-gray-400">x{quantities[p.id] || 1}</span></span>
-                              <span className="text-indigo-600 shrink-0 whitespace-nowrap">{formatWon(p.salePrice * (quantities[p.id] || 1))}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : <span className="text-red-400">미선택</span>}
-                    </td>
-                  </tr>
-                  <tr className="border-b border-white/30">
-                    <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">총 수량</td>
-                    <td className="px-4 py-2.5 text-gray-700">{selectedCount}종 / {totalQuantity}개</td>
-                  </tr>
-                  <tr className="border-b border-white/30">
-                    <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">결제 금액</td>
-                    <td className="px-4 py-2.5 text-indigo-600 font-medium">{formatWon(totalPrices.finalPrice)}</td>
-                  </tr>
-                  <tr className="border-b border-white/30">
-                    <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">결제 수단</td>
-                    <td className="px-4 py-2.5 text-gray-700">{paymentMethod === "card" ? "카드 결제" : "계좌 이체"}</td>
-                  </tr>
-                  {paymentMethod === "bank" && (
-                    <>
+                    <tr className="border-b border-white/30">
+                      <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">연락처</td>
+                      <td className="px-4 py-2.5 text-gray-700">{phone || <span className="text-red-400">미입력</span>}</td>
+                    </tr>
+                    {email && (
                       <tr className="border-b border-white/30">
-                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">입금 계좌</td>
-                        <td className="px-4 py-2.5 text-gray-700">{BANK_INFO.bank} {BANK_INFO.account}</td>
+                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">이메일</td>
+                        <td className="px-4 py-2.5 text-gray-700">{email}</td>
                       </tr>
-                      <tr className="border-b border-white/30">
-                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">현금영수증</td>
-                        <td className="px-4 py-2.5 text-gray-700">
-                          {receiptType === "none" && "미발급"}
-                          {receiptType === "personal" && `개인 (소득공제) / ${receiptNumber || "미입력"}`}
-                          {receiptType === "business" && `사업자 (지출증빙) / ${receiptNumber || "미입력"}`}
-                        </td>
-                      </tr>
-                    </>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="rounded-xl border border-indigo-200/40 bg-indigo-50/30 backdrop-blur-sm p-4">
-              <div className="flex items-center gap-2 mb-3 justify-center">
-                <LockClosed24Regular className="text-indigo-500 w-5 h-5" />
-                <p className="text-gray-700 text-[14px]">주문 조회용 비밀번호 (숫자 4자리)</p>
+                    )}
+                    <tr>
+                      <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap align-top">배송주소</td>
+                      <td className="px-4 py-2.5 text-gray-700">
+                        {address ? (<>[{zipCode}] {address}{addressDetail && <><br />{addressDetail}</>}</>) : <span className="text-red-400">미입력</span>}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                {/* 선택 상품 — flex-1로 남은 공간 채움 */}
+                <div className="flex-1 flex flex-col border-t border-white/20 bg-white/10">
+                  <div className="flex-1 px-4 py-2.5">
+                    <p className="text-gray-400 text-[12px] mb-2">선택 상품</p>
+                    {selectedProductData.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {visibleProducts.map((p) => (
+                          <div key={p.id} className="flex items-center gap-2">
+                            <span className="text-gray-700 text-[13px] truncate min-w-0 flex-1">{p.name} <span className="text-gray-400">x{quantities[p.id] || 1}</span></span>
+                            <span className="text-indigo-600 text-[13px] shrink-0 whitespace-nowrap">{formatWon(p.salePrice * (quantities[p.id] || 1))}</span>
+                          </div>
+                        ))}
+                        {hiddenCount > 0 && (
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <span className="text-gray-400 text-[12px] italic">...외 {hiddenCount}종</span>
+                            <span className="text-indigo-400 text-[12px] shrink-0 whitespace-nowrap ml-auto">{formatWon(hiddenTotalPrice)}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : <span className="text-red-400 text-[13px]">미선택</span>}
+                  </div>
+                </div>
+                {/* 총 수량 — 하단 고정 */}
+                <div className="border-t border-white/30 mt-auto bg-white/5">
+                  <div className="flex items-center px-4 py-2.5 text-[13px]">
+                    <span className="text-gray-400 w-[90px] shrink-0">총 수량</span>
+                    <span className="text-gray-700 font-medium">{selectedCount}종 / {totalQuantity}개</span>
+                  </div>
+                </div>
               </div>
-              <PinInput value={pin} onChange={setPin} />
-              <p className="text-gray-400 text-[11px] text-center mt-2">
-                전화번호 + 비밀번호로 주문 조회 및 취소가 가능합니다.
-              </p>
+
+              {/* 우측: 결제 금액 ~ 비밀번호 */}
+              <div className="flex flex-col gap-4">
+                <div className="rounded-xl border border-white/40 bg-white/30 backdrop-blur-sm overflow-hidden flex-1">
+                  <table className="w-full text-[13px]">
+                    <tbody>
+                      <tr className="border-b border-white/30">
+                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap w-[90px]">결제 금액</td>
+                        <td className="px-4 py-2.5 text-indigo-600 font-semibold text-[15px]">{formatWon(totalPrices.finalPrice)}</td>
+                      </tr>
+                      <tr className="border-b border-white/30">
+                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">결제 수단</td>
+                        <td className="px-4 py-2.5 text-gray-700">{paymentMethod === "card" ? "카드 결제" : "계좌 이체"}</td>
+                      </tr>
+                      {paymentMethod === "bank" && (
+                        <>
+                          <tr className="border-b border-white/30">
+                            <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">입금 계좌</td>
+                            <td className="px-4 py-2.5 text-gray-700">{BANK_INFO.bank} {BANK_INFO.account}</td>
+                          </tr>
+                          <tr className="border-b border-white/30">
+                            <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">현금영수증</td>
+                            <td className="px-4 py-2.5 text-gray-700">
+                              {receiptType === "none" && "미발급"}
+                              {receiptType === "personal" && `개인 (소득공제) / ${receiptNumber || "미입력"}`}
+                              {receiptType === "business" && `사업자 (지출증빙) / ${receiptNumber || "미입력"}`}
+                            </td>
+                          </tr>
+                        </>
+                      )}
+                      <tr className="border-b border-white/30">
+                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">정가 합계</td>
+                        <td className="px-4 py-2.5 text-gray-500 line-through">{formatWon(totalPrices.listPrice)}</td>
+                      </tr>
+                      <tr className="border-b border-white/30">
+                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">할인</td>
+                        <td className="px-4 py-2.5 text-red-500">-{formatWon(totalPrices.discountAmount)}</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">학원지원금</td>
+                        <td className="px-4 py-2.5 text-emerald-600">-{formatWon(totalPrices.schoolSupport)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="rounded-xl border border-indigo-200/40 bg-indigo-50/30 backdrop-blur-sm p-4">
+                  <div className="flex items-center gap-2 mb-3 justify-center">
+                    <LockClosed24Regular className="text-indigo-500 w-5 h-5" />
+                    <p className="text-gray-700 text-[14px]">주문 조회용 비밀번호 (숫자 4자리)</p>
+                  </div>
+                  <PinInput value={pin} onChange={setPin} />
+                  <p className="text-gray-400 text-[11px] text-center mt-2">
+                    전화번호 + 비밀번호로 주문 조회 및 취소가 가능합니다.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         );
+      }
 
       case TOTAL_STEPS:
         return (
@@ -801,7 +883,7 @@ export default function App() {
 
         {/* Main Panel */}
         <motion.div layout="position" transition={springTransition}
-          className={`w-full ${step === 1 && view === "order" && !isMobile ? "max-w-[1200px]" : "max-w-lg"} origin-top transition-[max-width] duration-500`}>
+          className={`w-full ${view === "order" && !isMobile && (step === 1 || step === 2 || step === 3) ? (step === 1 ? "max-w-[1200px]" : "max-w-3xl") : "max-w-lg"} origin-top transition-[max-width] duration-500`}>
           <GlassPanel className={`p-5 sm:p-6 ${step === 1 && view === "order" ? "flex flex-col h-[calc(100vh-200px)] min-h-[500px] max-h-[800px]" : "overflow-hidden"}`}>
             <AnimatePresence mode="wait" custom={view === "order" ? direction : viewDirection}>
               {view === "main" && (
