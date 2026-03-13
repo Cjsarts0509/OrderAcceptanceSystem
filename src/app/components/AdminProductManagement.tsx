@@ -42,6 +42,7 @@ import {
   type SetProduct as StoreSetProduct,
   type ResolvedSetProduct,
 } from "../utils/dataStore";
+import { calculatePrice, formatWon as formatWonUtil } from "../utils/priceCalculator";
 
 /* ───── Types (UI-level) ───── */
 type SidebarTab = "products" | "sets" | "list" | "orders";
@@ -55,20 +56,23 @@ const inputClass = "w-full rounded-lg border border-white/40 bg-white/40 backdro
 
 /* ───── Excel Helpers (XLSX) ───── */
 function exportProductsToExcel(products: RegisteredProduct[]) {
-  const headers = ["ISBN", "상품명", "출판사", "정가", "할인율(%)"];
-  const rows = products.map((p) => [p.isbn, p.name, p.publisher, p.listPrice, p.discountRate]);
+  const headers = ["ISBN", "상품명", "출판사", "정가", "할인가(10%)", "학원지원금", "최종판매가"];
+  const rows = products.map((p) => {
+    const prices = calculatePrice(p.listPrice);
+    return [p.isbn, p.name, p.publisher, p.listPrice, prices.discountedPrice, prices.schoolSupport, prices.finalPrice];
+  });
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws["!cols"] = [{ wch: 16 }, { wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 10 }];
+  ws["!cols"] = [{ wch: 16 }, { wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "상품목록");
   XLSX.writeFile(wb, `단품상품목록_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 function downloadExcelTemplate() {
-  const headers = ["ISBN", "상품명", "출판사", "정가", "할인율(%)"];
-  const example = ["9791168341784", "트렌드 코리아 2026", "미래의창", 19800, 10];
+  const headers = ["ISBN", "상품명", "출판사", "정가"];
+  const example = ["9791168341784", "트렌드 코리아 2026", "미래의창", 19800];
   const ws = XLSX.utils.aoa_to_sheet([headers, example]);
-  ws["!cols"] = [{ wch: 16 }, { wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 10 }];
+  ws["!cols"] = [{ wch: 16 }, { wch: 30 }, { wch: 14 }, { wch: 10 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "업로드양식");
   XLSX.writeFile(wb, "단품상품_업로드양식.xlsx");
@@ -172,15 +176,11 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
   const [formName, setFormName] = useState("");
   const [formPublisher, setFormPublisher] = useState("");
   const [formListPrice, setFormListPrice] = useState("");
-  const [formDiscountRate, setFormDiscountRate] = useState("10");
-  const [formSalePrice, setFormSalePrice] = useState("");
 
   /* ── Set Form ── */
   const [editingSetId, setEditingSetId] = useState<string | null>(null);
   const [setName, setSetName] = useState("");
   const [setSelectedIds, setSetSelectedIds] = useState<string[]>([]);
-  const [setDiscountRate, setSetDiscountRate] = useState("10");
-  const [setSalePrice, setSetSalePrice] = useState("");
 
   /* ── Detail Popup ── */
   const [detailProduct, setDetailProduct] = useState<RegisteredProduct | null>(null);
@@ -197,32 +197,16 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
   const resetProductForm = () => {
     setEditingProductId(null);
     setFormIsbn(""); setFormName(""); setFormPublisher("");
-    setFormListPrice(""); setFormDiscountRate("10"); setFormSalePrice("");
+    setFormListPrice("");
   };
 
   const resetSetForm = () => {
     setEditingSetId(null);
     setSetName(""); setSetSelectedIds([]);
-    setSetDiscountRate("10"); setSetSalePrice("");
-  };
-
-  const calcSalePrice = (lp: string, dr: string) => {
-    const list = Number(lp);
-    const disc = Math.min(Number(dr) || 0, MAX_DISCOUNT);
-    if (list > 0) {
-      setFormSalePrice(String(Math.round(list * (1 - disc / 100))));
-    }
   };
 
   const handleListPriceChange = (val: string) => {
     setFormListPrice(val);
-    calcSalePrice(val, formDiscountRate);
-  };
-
-  const handleDiscountRateChange = (val: string) => {
-    const clamped = Math.min(Number(val) || 0, MAX_DISCOUNT);
-    setFormDiscountRate(String(clamped));
-    calcSalePrice(formListPrice, String(clamped));
   };
 
   const handleIsbnChange = (val: string) => {
@@ -234,13 +218,13 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
     if (formIsbn.length !== 13) { toast.error("ISBN 13자리를 입력해 주세요."); return; }
     if (!formName.trim()) { toast.error("상품명을 입력해 주세요."); return; }
     if (!formListPrice) { toast.error("정가를 입력해 주세요."); return; }
-    const dr = Math.min(Number(formDiscountRate) || 0, MAX_DISCOUNT);
-    const sp = Number(formSalePrice) || Math.round(Number(formListPrice) * (1 - dr / 100));
+    const lp = Number(formListPrice);
+    const prices = calculatePrice(lp);
 
     if (editingProductId) {
       const newProducts = products.map((p) =>
         p.id === editingProductId
-          ? { ...p, isbn: formIsbn, name: formName, publisher: formPublisher, listPrice: Number(formListPrice), discountRate: dr, salePrice: sp, imageUrl: "" }
+          ? { ...p, isbn: formIsbn, name: formName, publisher: formPublisher, listPrice: lp, discountRate: 10, salePrice: prices.finalPrice, imageUrl: "" }
           : p
       );
       persistProducts(newProducts);
@@ -248,7 +232,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
     } else {
       const newProduct: RegisteredProduct = {
         id: `rp-${Date.now()}`, isbn: formIsbn, name: formName, publisher: formPublisher,
-        listPrice: Number(formListPrice), discountRate: dr, salePrice: sp,
+        listPrice: lp, discountRate: 10, salePrice: prices.finalPrice,
         imageUrl: "", type: "single",
       };
       persistProducts([...products, newProduct]);
@@ -260,8 +244,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
   const startEditProduct = (p: RegisteredProduct) => {
     setEditingProductId(p.id);
     setFormIsbn(p.isbn); setFormName(p.name); setFormPublisher(p.publisher);
-    setFormListPrice(String(p.listPrice)); setFormDiscountRate(String(p.discountRate));
-    setFormSalePrice(String(p.salePrice));
+    setFormListPrice(String(p.listPrice));
     setActiveTab("products");
   };
 
@@ -288,35 +271,21 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
     toast.success(`${ids.length}개 세트가 삭제되었습니다.`);
   };
 
-  const calcSetSalePrice = (ids: string[], dr: string) => {
-    const items = products.filter((p) => ids.includes(p.id));
-    const totalList = items.reduce((s, p) => s + p.listPrice, 0);
-    const disc = Math.min(Number(dr) || 0, MAX_DISCOUNT);
-    return Math.round(totalList * (1 - disc / 100));
-  };
-
-  const handleSetDiscountChange = (val: string) => {
-    const clamped = Math.min(Number(val) || 0, MAX_DISCOUNT);
-    setSetDiscountRate(String(clamped));
-    setSetSalePrice(String(calcSetSalePrice(setSelectedIds, String(clamped))));
-  };
-
   const handleSaveSet = () => {
     if (!setName.trim()) { toast.error("세트 이름을 입력해 주세요."); return; }
     if (setSelectedIds.length < 2) { toast.error("최소 2개의 상품을 선택해 주세요."); return; }
     const items = products.filter((p) => setSelectedIds.includes(p.id));
     const totalList = items.reduce((s, p) => s + p.listPrice, 0);
-    const dr = Math.min(Number(setDiscountRate) || 0, MAX_DISCOUNT);
-    const sp = Number(setSalePrice) || Math.round(totalList * (1 - dr / 100));
+    const prices = calculatePrice(totalList);
 
     if (editingSetId) {
       const newSets = sets.map((s) =>
-        s.id === editingSetId ? { ...s, name: setName, items, listPrice: totalList, discountRate: dr, salePrice: sp } : s
+        s.id === editingSetId ? { ...s, name: setName, items, listPrice: totalList, discountRate: 10, salePrice: prices.finalPrice } : s
       );
       persistSets(newSets);
       toast.success("세트가 수정되었습니다.");
     } else {
-      const newSet: ResolvedSetProduct = { id: `set-${Date.now()}`, name: setName, items, listPrice: totalList, discountRate: dr, salePrice: sp };
+      const newSet: ResolvedSetProduct = { id: `set-${Date.now()}`, name: setName, items, listPrice: totalList, discountRate: 10, salePrice: prices.finalPrice };
       persistSets([...sets, newSet]);
       toast.success("세트 상품이 생성되었습니다.");
     }
@@ -327,8 +296,6 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
     setEditingSetId(s.id);
     setSetName(s.name);
     setSetSelectedIds(s.items.map((i) => i.id));
-    setSetDiscountRate(String(s.discountRate));
-    setSetSalePrice(String(s.salePrice));
     setActiveTab("sets");
   };
 
@@ -350,20 +317,19 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
       let count = 0;
       const newProducts: RegisteredProduct[] = [];
       for (const row of dataRows) {
-        if (row.length < 5) continue;
-        const [isbn, name, publisher, listPriceStr, discountRateStr] = row;
+        if (row.length < 4) continue;
+        const [isbn, name, publisher, listPriceStr] = row;
         if (!isbn || !name) continue;
         const lp = Number(listPriceStr) || 0;
-        const dr = Math.min(Number(discountRateStr) || 0, MAX_DISCOUNT);
-        const sp = Math.round(lp * (1 - dr / 100));
+        const prices = calculatePrice(lp);
         newProducts.push({
           id: `rp-imp-${Date.now()}-${count}`,
           isbn: isbn.replace(/\D/g, ""),
           name,
           publisher: publisher || "",
           listPrice: lp,
-          discountRate: dr,
-          salePrice: sp,
+          discountRate: 10,
+          salePrice: prices.finalPrice,
           imageUrl: "",
           type: "single",
         });
@@ -543,14 +509,26 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                         <label className="block text-gray-500 text-[12px] mb-1">정가</label>
                         <input type="number" value={formListPrice} onChange={(e) => handleListPriceChange(e.target.value)} placeholder="0" className={inputClass} />
                       </div>
-                      <div>
-                        <label className="block text-gray-500 text-[12px] mb-1">할인율 (%, 최대 {MAX_DISCOUNT}%)</label>
-                        <input type="number" value={formDiscountRate} onChange={(e) => handleDiscountRateChange(e.target.value)} max={MAX_DISCOUNT} min={0} placeholder="10" className={inputClass} />
-                      </div>
-                      <div>
-                        <label className="block text-gray-500 text-[12px] mb-1">할인 판매가 <span className="text-gray-400 text-[10px]">(자동계산)</span></label>
-                        <input type="number" value={formSalePrice} readOnly placeholder="자동 계산" className={`${inputClass} bg-white/20 cursor-default`} />
-                      </div>
+                      {Number(formListPrice) > 0 && (() => {
+                        const p = calculatePrice(Number(formListPrice));
+                        return (
+                          <div className="col-span-1 rounded-lg border border-indigo-100/50 bg-indigo-50/20 p-2.5 space-y-1">
+                            <p className="text-[11px] text-indigo-500 font-medium mb-1">자동 계산 (할인율 10% 고정)</p>
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-gray-500">할인금액</span>
+                              <span className="text-red-500">-{formatWon(p.listPrice - p.discountedPrice)}</span>
+                            </div>
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-gray-500">학원지원금</span>
+                              <span className="text-emerald-600">-{formatWon(p.schoolSupport)}</span>
+                            </div>
+                            <div className="flex justify-between text-[12px] pt-1 border-t border-indigo-100/40">
+                              <span className="text-gray-600 font-medium">최종판매가</span>
+                              <span className="text-indigo-600 font-bold">{formatWon(p.finalPrice)}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <div className="col-span-2 flex justify-end pt-1">
                         <button type="button" onClick={handleSaveProduct}
                           className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2.5 text-white text-[14px] shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">
@@ -566,7 +544,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                 <GlassPanel className="p-4 shrink-0">
                   <div className="flex items-center gap-3 flex-wrap">
                     <ArrowUpload24Regular className="w-5 h-5 text-indigo-500 shrink-0" />
-                    <span className="text-gray-600 text-[13px]">엑셀(XLSX/XLS/CSV) 일괄 등록 — ISBN, 상품명, 출판사, 정가, 할인율</span>
+                    <span className="text-gray-600 text-[13px]">엑셀(XLSX/XLS/CSV) 일괄 등록 — ISBN, 상품명, 출판사, 정가</span>
                     <div className="flex gap-2 ml-auto">
                       <button type="button" onClick={downloadExcelTemplate}
                         className="flex items-center gap-1.5 rounded-lg border border-white/40 bg-white/30 px-3 py-1.5 text-gray-600 text-[12px] hover:bg-white/50 transition-colors cursor-pointer">
@@ -597,21 +575,25 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                           <th className="text-left text-gray-400 py-2.5 px-3">상품명</th>
                           <th className="text-left text-gray-400 py-2.5 px-3">출판사</th>
                           <th className="text-right text-gray-400 py-2.5 px-3">정가</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">할인율</th>
+                          <th className="text-right text-gray-400 py-2.5 px-3">할인금액</th>
+                          <th className="text-right text-gray-400 py-2.5 px-3">학원지원금</th>
                           <th className="text-right text-gray-400 py-2.5 px-3">판매가</th>
                           <th className="text-center text-gray-400 py-2.5 px-3">관리</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {products.map((p, idx) => (
+                        {products.map((p, idx) => {
+                          const prices = calculatePrice(p.listPrice);
+                          return (
                           <motion.tr key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
                             className={`border-b border-white/20 hover:bg-white/20 transition-colors ${editingProductId === p.id ? "bg-amber-50/30" : ""}`}>
                             <td className="py-2.5 px-3 font-mono text-gray-500 text-[12px]">{p.isbn}</td>
                             <td className="py-2.5 px-3 text-gray-700">{p.name}</td>
                             <td className="py-2.5 px-3 text-gray-500">{p.publisher}</td>
                             <td className="py-2.5 px-3 text-right text-gray-500">{formatWon(p.listPrice)}</td>
-                            <td className="py-2.5 px-3 text-right text-red-500">{p.discountRate}%</td>
-                            <td className="py-2.5 px-3 text-right text-indigo-600">{formatWon(p.salePrice)}</td>
+                            <td className="py-2.5 px-3 text-right text-red-500">-{formatWon(prices.listPrice - prices.discountedPrice)}</td>
+                            <td className="py-2.5 px-3 text-right text-emerald-600">-{formatWon(prices.schoolSupport)}</td>
+                            <td className="py-2.5 px-3 text-right text-indigo-600">{formatWon(prices.finalPrice)}</td>
                             <td className="py-2.5 px-3 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" onClick={() => startEditProduct(p)} className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-amber-500 hover:bg-amber-50/50 transition-colors cursor-pointer">
@@ -623,9 +605,10 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               </div>
                             </td>
                           </motion.tr>
-                        ))}
+                          );
+                        })}
                         {products.length === 0 && (
-                          <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-[13px]">등록된 상품이 없습니다. 위 폼에서 상품을 등록하세요.</td></tr>
+                          <tr><td colSpan={8} className="text-center py-8 text-gray-400 text-[13px]">등록된 상품이 없습니다. 위 폼에서 상품을 등록하세요.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -659,29 +642,36 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                       )}
                     </h3>
                     <div className="space-y-4">
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-gray-500 text-[12px] mb-1">세트 이름</label>
                           <input type="text" value={setName} onChange={(e) => setSetName(e.target.value)} placeholder="예: 2026 필독서 세트" className={inputClass} />
                         </div>
-                        <div>
-                          <label className="block text-gray-500 text-[12px] mb-1">할인율 (%, 최대 {MAX_DISCOUNT}%)</label>
-                          <input type="number" value={setDiscountRate} onChange={(e) => handleSetDiscountChange(e.target.value)} max={MAX_DISCOUNT} min={0} placeholder="10" className={inputClass} />
-                        </div>
-                        <div>
-                          <label className="block text-gray-500 text-[12px] mb-1">세트 판매가</label>
-                          <input type="number" value={setSalePrice} onChange={(e) => setSetSalePrice(e.target.value)} placeholder="자동 계산" className={inputClass} />
-                          {setSelectedIds.length > 0 && (() => {
-                            const totalList = products.filter((p) => setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0);
-                            const sp = Number(setSalePrice) || 0;
-                            const actualDiscount = totalList > 0 ? Math.round((1 - sp / totalList) * 10000) / 100 : 0;
-                            return (
-                              <p className="text-[11px] mt-1 text-indigo-500">
-                                정가 합계 {formatWon(totalList)} → <span className="text-red-500">{actualDiscount}% 할인</span> = <span className="text-indigo-600">{formatWon(sp)}</span>
-                              </p>
-                            );
-                          })()}
-                        </div>
+                        {setSelectedIds.length > 0 && (() => {
+                          const totalList = products.filter((p) => setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0);
+                          const prices = calculatePrice(totalList);
+                          return (
+                            <div className="rounded-lg border border-indigo-100/50 bg-indigo-50/20 p-2.5 space-y-1">
+                              <p className="text-[11px] text-indigo-500 font-medium mb-1">자동 계산 (할인율 10% 고정)</p>
+                              <div className="flex justify-between text-[11px]">
+                                <span className="text-gray-500">정가 합계</span>
+                                <span className="text-gray-700">{formatWon(totalList)}</span>
+                              </div>
+                              <div className="flex justify-between text-[11px]">
+                                <span className="text-gray-500">할인금액</span>
+                                <span className="text-red-500">-{formatWon(prices.listPrice - prices.discountedPrice)}</span>
+                              </div>
+                              <div className="flex justify-between text-[11px]">
+                                <span className="text-gray-500">학원지원금</span>
+                                <span className="text-emerald-600">-{formatWon(prices.schoolSupport)}</span>
+                              </div>
+                              <div className="flex justify-between text-[12px] pt-1 border-t border-indigo-100/40">
+                                <span className="text-gray-600 font-medium">최종판매가</span>
+                                <span className="text-indigo-600 font-bold">{formatWon(prices.finalPrice)}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Dual list */}
@@ -695,7 +685,6 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               <button key={p.id} type="button" onClick={() => {
                                 const newIds = [...setSelectedIds, p.id];
                                 setSetSelectedIds(newIds);
-                                setSetSalePrice(String(calcSetSalePrice(newIds, setDiscountRate)));
                               }} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-indigo-50/30 transition-colors cursor-pointer border-b border-white/10 last:border-0">
                                 <span className="text-gray-700 text-[13px] truncate flex-1">{p.name}</span>
                                 <span className="text-gray-400 text-[11px] shrink-0">{formatWon(p.listPrice)}</span>
@@ -723,7 +712,6 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               <button key={p.id} type="button" onClick={() => {
                                 const newIds = setSelectedIds.filter((x) => x !== p.id);
                                 setSetSelectedIds(newIds);
-                                setSetSalePrice(String(calcSetSalePrice(newIds, setDiscountRate)));
                               }} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-red-50/30 transition-colors cursor-pointer border-b border-indigo-100/20 last:border-0">
                                 <span className="text-gray-700 text-[13px] truncate flex-1">{p.name}</span>
                                 <span className="text-gray-400 text-[11px] shrink-0 mr-1">{formatWon(p.listPrice)}</span>
@@ -741,11 +729,16 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                         </div>
                       </div>
 
-                      {setSelectedIds.length > 0 && (
+                      {setSelectedIds.length > 0 && (() => {
+                        const totalList = products.filter((p) => setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0);
+                        const prices = calculatePrice(totalList);
+                        return (
                         <div className="flex items-center justify-between px-1">
                           <span className="text-gray-500 text-[13px]">
-                            정가 합계: {formatWon(products.filter((p) => setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0))}
-                            {setSalePrice && <span className="ml-3 text-indigo-600">판매가: {formatWon(Number(setSalePrice))}</span>}
+                            정가: {formatWon(totalList)}
+                            <span className="ml-2 text-red-500">할인: -{formatWon(prices.listPrice - prices.discountedPrice)}</span>
+                            <span className="ml-2 text-emerald-600">지원: -{formatWon(prices.schoolSupport)}</span>
+                            <span className="ml-2 text-indigo-600 font-medium">판매가: {formatWon(prices.finalPrice)}</span>
                           </span>
                           <button type="button" onClick={handleSaveSet}
                             className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2.5 text-white text-[14px] shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">
@@ -753,7 +746,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                             {editingSetId ? "세트 수정" : "세트 생성"}
                           </button>
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   </GlassPanel>
                 )}
@@ -771,13 +765,16 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                           <th className="text-left text-gray-400 py-2.5 px-3">세트명</th>
                           <th className="text-left text-gray-400 py-2.5 px-3">세트 목록</th>
                           <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">정가</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">할인율</th>
+                          <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">할인금액</th>
+                          <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">학원지원금</th>
                           <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">판매가</th>
                           <th className="text-center text-gray-400 py-2.5 px-3 whitespace-nowrap">관리</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {sets.map((s, idx) => (
+                        {sets.map((s, idx) => {
+                          const setPrices = calculatePrice(s.listPrice);
+                          return (
                           <motion.tr key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
                             className={`border-b border-white/20 hover:bg-white/20 transition-colors ${editingSetId === s.id ? "bg-amber-50/30" : ""}`}>
                             <td className="py-3 px-3 text-gray-700 align-top whitespace-nowrap">
@@ -794,8 +791,9 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               </div>
                             </td>
                             <td className="py-3 px-3 text-right text-gray-500 align-top whitespace-nowrap">{formatWon(s.listPrice)}</td>
-                            <td className="py-3 px-3 text-right text-red-500 align-top whitespace-nowrap">{s.discountRate}%</td>
-                            <td className="py-3 px-3 text-right text-indigo-600 align-top whitespace-nowrap">{formatWon(s.salePrice)}</td>
+                            <td className="py-3 px-3 text-right text-red-500 align-top whitespace-nowrap">-{formatWon(setPrices.listPrice - setPrices.discountedPrice)}</td>
+                            <td className="py-3 px-3 text-right text-emerald-600 align-top whitespace-nowrap">-{formatWon(setPrices.schoolSupport)}</td>
+                            <td className="py-3 px-3 text-right text-indigo-600 align-top whitespace-nowrap">{formatWon(setPrices.finalPrice)}</td>
                             <td className="py-3 px-3 text-center align-top">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" onClick={() => startEditSet(s)} className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-amber-500 hover:bg-amber-50/50 transition-colors cursor-pointer">
@@ -807,9 +805,10 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               </div>
                             </td>
                           </motion.tr>
-                        ))}
+                          );
+                        })}
                         {sets.length === 0 && (
-                          <tr><td colSpan={6} className="text-center py-8 text-gray-400 text-[13px]">등록된 세트가 없습니다.</td></tr>
+                          <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-[13px]">등록된 세트가 없습니다.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -863,12 +862,15 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                           <th className="text-left text-gray-400 py-2.5 px-3">상품명</th>
                           <th className="text-left text-gray-400 py-2.5 px-3">출판사</th>
                           <th className="text-right text-gray-400 py-2.5 px-3">정가</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">할인율</th>
+                          <th className="text-right text-gray-400 py-2.5 px-3">할인금액</th>
+                          <th className="text-right text-gray-400 py-2.5 px-3">학원지원금</th>
                           <th className="text-right text-gray-400 py-2.5 px-3">판매가</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {products.map((p) => (
+                        {products.map((p) => {
+                          const listPrices = calculatePrice(p.listPrice);
+                          return (
                           <tr key={p.id}
                             className="border-b border-white/20 hover:bg-indigo-50/20 transition-colors cursor-pointer select-none">
                             <td className="py-2.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -880,10 +882,12 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                             <td className="py-2.5 px-3 text-gray-700" onClick={() => setDetailProduct(p)}>{p.name}</td>
                             <td className="py-2.5 px-3 text-gray-500" onClick={() => setDetailProduct(p)}>{p.publisher}</td>
                             <td className="py-2.5 px-3 text-right text-gray-500" onClick={() => setDetailProduct(p)}>{formatWon(p.listPrice)}</td>
-                            <td className="py-2.5 px-3 text-right text-red-500" onClick={() => setDetailProduct(p)}>{p.discountRate}%</td>
-                            <td className="py-2.5 px-3 text-right text-indigo-600" onClick={() => setDetailProduct(p)}>{formatWon(p.salePrice)}</td>
+                            <td className="py-2.5 px-3 text-right text-red-500" onClick={() => setDetailProduct(p)}>-{formatWon(listPrices.listPrice - listPrices.discountedPrice)}</td>
+                            <td className="py-2.5 px-3 text-right text-emerald-600" onClick={() => setDetailProduct(p)}>-{formatWon(listPrices.schoolSupport)}</td>
+                            <td className="py-2.5 px-3 text-right text-indigo-600" onClick={() => setDetailProduct(p)}>{formatWon(listPrices.finalPrice)}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -917,12 +921,15 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                           <th className="text-left text-gray-400 py-2.5 px-3">세트명</th>
                           <th className="text-center text-gray-400 py-2.5 px-3">구성 상품수</th>
                           <th className="text-right text-gray-400 py-2.5 px-3">정가 합계</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">할인율</th>
+                          <th className="text-right text-gray-400 py-2.5 px-3">할인금액</th>
+                          <th className="text-right text-gray-400 py-2.5 px-3">학원지원금</th>
                           <th className="text-right text-gray-400 py-2.5 px-3">판매가</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {sets.map((s) => (
+                        {sets.map((s) => {
+                          const sp = calculatePrice(s.listPrice);
+                          return (
                           <tr key={s.id}
                             className="border-b border-white/20 hover:bg-indigo-50/20 transition-colors cursor-pointer select-none">
                             <td className="py-2.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -933,12 +940,14 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                             <td className="py-2.5 px-3 text-gray-700" onClick={() => setDetailSet(s)}>{s.name}</td>
                             <td className="py-2.5 px-3 text-center text-gray-500" onClick={() => setDetailSet(s)}>{s.items.length}개</td>
                             <td className="py-2.5 px-3 text-right text-gray-500" onClick={() => setDetailSet(s)}>{formatWon(s.listPrice)}</td>
-                            <td className="py-2.5 px-3 text-right text-red-500" onClick={() => setDetailSet(s)}>{s.discountRate}%</td>
-                            <td className="py-2.5 px-3 text-right text-indigo-600" onClick={() => setDetailSet(s)}>{formatWon(s.salePrice)}</td>
+                            <td className="py-2.5 px-3 text-right text-red-500" onClick={() => setDetailSet(s)}>-{formatWon(sp.listPrice - sp.discountedPrice)}</td>
+                            <td className="py-2.5 px-3 text-right text-emerald-600" onClick={() => setDetailSet(s)}>-{formatWon(sp.schoolSupport)}</td>
+                            <td className="py-2.5 px-3 text-right text-indigo-600" onClick={() => setDetailSet(s)}>{formatWon(sp.finalPrice)}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                         {sets.length === 0 && (
-                          <tr><td colSpan={6} className="text-center py-8 text-gray-400 text-[13px]">등록된 세트가 없습니다.</td></tr>
+                          <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-[13px]">등록된 세트가 없습니다.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -991,12 +1000,16 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
               </div>
               <table className="w-full text-[13px]">
                 <tbody>
-                  {([
-                    ["ISBN", detailProduct.isbn],
-                    ["정가", formatWon(detailProduct.listPrice)],
-                    ["할인율", `${detailProduct.discountRate}%`],
-                    ["판매가", formatWon(detailProduct.salePrice)],
-                  ] as [string, string][]).map(([label, val]) => (
+                  {(() => {
+                    const dp = calculatePrice(detailProduct.listPrice);
+                    return [
+                      ["ISBN", detailProduct.isbn],
+                      ["정가", formatWon(detailProduct.listPrice)],
+                      ["할인금액(10%)", `-${formatWon(dp.listPrice - dp.discountedPrice)}`],
+                      ["학원지원금", `-${formatWon(dp.schoolSupport)}`],
+                      ["최종판매가", formatWon(dp.finalPrice)],
+                    ] as [string, string][];
+                  })().map(([label, val]) => (
                     <tr key={label} className="border-b border-gray-100/50">
                       <td className="py-2 text-gray-400 w-[80px]">{label}</td>
                       <td className="py-2 text-gray-700 font-mono">{val}</td>
@@ -1031,11 +1044,17 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
               <div className="mb-4">
                 <span className="text-purple-500 text-[11px] px-2 py-0.5 rounded-full bg-purple-50/50 border border-purple-100/50">세트</span>
                 <h3 className="text-gray-800 mt-1.5">{detailSet.name}</h3>
-                <div className="flex items-center gap-4 text-[13px] mt-1">
-                  <span className="text-gray-400 line-through">{formatWon(detailSet.listPrice)}</span>
-                  <span className="text-indigo-600">{formatWon(detailSet.salePrice)}</span>
-                  <span className="text-red-500 text-[12px]">-{detailSet.discountRate}%</span>
-                </div>
+                {(() => {
+                  const sdp = calculatePrice(detailSet.listPrice);
+                  return (
+                  <div className="flex items-center gap-4 text-[13px] mt-1">
+                    <span className="text-gray-400 line-through">{formatWon(detailSet.listPrice)}</span>
+                    <span className="text-red-500 text-[11px]">할인 -{formatWon(sdp.listPrice - sdp.discountedPrice)}</span>
+                    <span className="text-emerald-600 text-[11px]">지원금 -{formatWon(sdp.schoolSupport)}</span>
+                    <span className="text-indigo-600 font-medium">{formatWon(sdp.finalPrice)}</span>
+                  </div>
+                  );
+                })()}
               </div>
               <p className="text-gray-500 text-[12px] mb-3">구성 상품 ({detailSet.items.length}개)</p>
               <div className="space-y-2.5 max-h-[320px] overflow-y-auto">
@@ -1051,7 +1070,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-gray-400 text-[11px] line-through">{formatWon(item.listPrice)}</p>
-                      <p className="text-indigo-600 text-[13px]">{formatWon(item.salePrice)}</p>
+                      <p className="text-indigo-600 text-[13px]">{formatWon(calculatePrice(item.listPrice).finalPrice)}</p>
                     </div>
                   </div>
                 ))}

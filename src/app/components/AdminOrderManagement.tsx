@@ -18,6 +18,7 @@ import {
 import { GlassPanel } from "./GlassPanel";
 import type { OrderData } from "../utils/orderUtils";
 import { getProductsSync, getResolvedSetsSync } from "../utils/dataStore";
+import { calculatePrice } from "../utils/priceCalculator";
 
 /* ───── Types ───── */
 interface WaybillLog { id: string; orderNumber: string; customerName: string; reason: string; timestamp: string; }
@@ -121,72 +122,123 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
     const allProducts = getProductsSync();
     const allSets = getResolvedSetsSync();
 
-    /* ── Sheet 1: 주문 정보 (검산용) ── */
+    /* ── Sheet 1: 주문 정보 — 상품 단위 플랫 구조 ── */
     const sheet1Data: any[] = [];
+    // 전체 합계용
+    let grandTotalQty = 0;
+    let grandTotalListPrice = 0;
+    let grandTotalDiscountedPrice = 0;
+    let grandTotalSchoolSupport = 0;
+    let grandTotalFinalPrice = 0;
+
     for (const order of selected) {
-      // 주문 헤더
-      sheet1Data.push({ 주문번호: order.orderNumber, 주문자: order.customerName, 연락처: order.customerPhone, 우편번호: order.zipCode || "", 배송주소: `${order.shippingAddress} ${order.shippingAddressDetail || ""}`, 결제수단: order.paymentMethod === "card" ? "카드결제" : "계좌이체", 주문일시: formatDateTime(order.createdAt), 상태: statusLabels[order.status]?.label || order.status, ISBN: "", 상품명: "", 출판사: "", 유형: "", 수량: "", 정가: "", 판매가: "", 소계정가: "", 소계판매가: "" });
-      // 상품 행
       for (const p of order.products) {
         const qty = p.quantity ?? 1;
-        sheet1Data.push({ 주문번호: "", 주문자: "", 연락처: "", 우편번호: "", 배송주소: "", 결제수단: "", 주문일시: "", 상태: "", ISBN: p.isbn, 상품명: p.name, 출판사: p.publisher || "", 유형: p.type === "set" ? "세트" : "단품", 수량: qty, 정가: p.listPrice, 판매가: p.salePrice, 소계정가: p.listPrice * qty, 소계판매가: p.salePrice * qty });
+        const prices = calculatePrice(p.listPrice);
+        const subtotalList = p.listPrice * qty;
+        const subtotalDiscounted = prices.discountedPrice * qty;
+        const subtotalSupport = prices.schoolSupport * qty;
+        const subtotalFinal = prices.finalPrice * qty;
+
+        grandTotalQty += qty;
+        grandTotalListPrice += subtotalList;
+        grandTotalDiscountedPrice += subtotalDiscounted;
+        grandTotalSchoolSupport += subtotalSupport;
+        grandTotalFinalPrice += subtotalFinal;
+
+        sheet1Data.push({
+          주문번호: order.orderNumber,
+          주문자: order.customerName,
+          연락처: order.customerPhone,
+          우편번호: order.zipCode || "",
+          배송주소: `${order.shippingAddress} ${order.shippingAddressDetail || ""}`.trim(),
+          주문일시: formatDateTime(order.createdAt),
+          결제수단: order.paymentMethod === "card" ? "카드결제" : "계좌이체",
+          상태: statusLabels[order.status]?.label || order.status,
+          ISBN: p.isbn,
+          상품명: p.name,
+          출판사: p.publisher || "",
+          유형: p.type === "set" ? "세트" : "단품",
+          수량: qty,
+          정가: p.listPrice,
+          "할인(10%)": prices.listPrice - prices.discountedPrice,
+          학원지원금: prices.schoolSupport,
+          최종판매가: prices.finalPrice,
+          소계정가: subtotalList,
+          소계할인가: subtotalDiscounted,
+          소계학원지원금: subtotalSupport,
+          소계판매가: subtotalFinal,
+        });
       }
-      // 합계 행
-      sheet1Data.push({ 주문번호: "", 주문자: "", 연락처: "", 우편번호: "", 배송주소: "", 결제수단: "", 주문일시: "", 상태: "", ISBN: "", 상품명: "【합계】", 출판사: "", 유형: "", 수량: order.products.reduce((s, p) => s + (p.quantity ?? 1), 0), 정가: "", 판매가: "", 소계정가: order.totalListPrice, 소계판매가: order.totalSalePrice });
-      sheet1Data.push({}); // 빈 행
     }
 
+    // 전체 합계 행
+    sheet1Data.push({
+      주문번호: "【합계】", 주문자: "", 연락처: "", 우편번호: "", 배송주소: "",
+      주문일시: "", 결제수단: "", 상태: "",
+      ISBN: "", 상품명: "", 출판사: "", 유형: "",
+      수량: grandTotalQty,
+      정가: "", "할인(10%)": "", 학원지원금: "", 최종판매가: "",
+      소계정가: grandTotalListPrice,
+      소계할인가: grandTotalDiscountedPrice,
+      소계학원지원금: grandTotalSchoolSupport,
+      소계판매가: grandTotalFinalPrice,
+    });
+
     /* ── Sheet 2: 발주용 상품 집계 (세트→단품 분해) ── */
-    const productAgg: Record<string, { isbn: string; name: string; publisher: string; qty: number; totalList: number; totalSale: number }> = {};
+    const productAgg: Record<string, { isbn: string; name: string; publisher: string; qty: number; unitListPrice: number; totalList: number; totalFinal: number; schoolSupport: number }> = {};
 
     for (const order of selected) {
       for (const p of order.products) {
         const qty = p.quantity ?? 1;
         if (p.type === "set" && p.setItems) {
-          // 세트를 구성품으로 분해
           const setData = allSets.find((s) => s.name === p.name || s.id === p.id);
           if (setData) {
             for (const itemId of setData.itemIds) {
               const item = allProducts.find((pr) => pr.id === itemId);
               if (item) {
                 const key = item.isbn || item.id;
-                if (!productAgg[key]) productAgg[key] = { isbn: item.isbn, name: item.name, publisher: item.publisher, qty: 0, totalList: 0, totalSale: 0 };
+                const itemPrices = calculatePrice(item.listPrice);
+                if (!productAgg[key]) productAgg[key] = { isbn: item.isbn, name: item.name, publisher: item.publisher, qty: 0, unitListPrice: item.listPrice, totalList: 0, totalFinal: 0, schoolSupport: itemPrices.schoolSupport };
                 productAgg[key].qty += qty;
                 productAgg[key].totalList += item.listPrice * qty;
-                productAgg[key].totalSale += item.salePrice * qty;
+                productAgg[key].totalFinal += itemPrices.finalPrice * qty;
               }
             }
           } else {
-            // 폴백: 세트 자체로 추가
             const key = p.isbn || p.id;
-            if (!productAgg[key]) productAgg[key] = { isbn: p.isbn, name: p.name, publisher: p.publisher || "", qty: 0, totalList: 0, totalSale: 0 };
+            const fallbackPrices = calculatePrice(p.listPrice);
+            if (!productAgg[key]) productAgg[key] = { isbn: p.isbn, name: p.name, publisher: p.publisher || "", qty: 0, unitListPrice: p.listPrice, totalList: 0, totalFinal: 0, schoolSupport: fallbackPrices.schoolSupport };
             productAgg[key].qty += qty;
             productAgg[key].totalList += p.listPrice * qty;
-            productAgg[key].totalSale += p.salePrice * qty;
+            productAgg[key].totalFinal += fallbackPrices.finalPrice * qty;
           }
         } else {
           const key = p.isbn || p.id;
-          if (!productAgg[key]) productAgg[key] = { isbn: p.isbn, name: p.name, publisher: p.publisher || "", qty: 0, totalList: 0, totalSale: 0 };
+          const itemPrices = calculatePrice(p.listPrice);
+          if (!productAgg[key]) productAgg[key] = { isbn: p.isbn, name: p.name, publisher: p.publisher || "", qty: 0, unitListPrice: p.listPrice, totalList: 0, totalFinal: 0, schoolSupport: itemPrices.schoolSupport };
           productAgg[key].qty += qty;
           productAgg[key].totalList += p.listPrice * qty;
-          productAgg[key].totalSale += p.salePrice * qty;
+          productAgg[key].totalFinal += itemPrices.finalPrice * qty;
         }
       }
     }
 
-    const sheet2Data = Object.values(productAgg).map((v) => ({ ISBN: v.isbn, 상품명: v.name, 출판사: v.publisher, 주문수량: v.qty, 총정가: v.totalList, 총판매금액: v.totalSale }));
-    // 합계
+    const sheet2Data = Object.values(productAgg).map((v) => ({
+      ISBN: v.isbn, 상품명: v.name, 출판사: v.publisher,
+      단가정가: v.unitListPrice, 학원지원금: v.schoolSupport,
+      주문수량: v.qty, 총정가: v.totalList, 총판매금액: v.totalFinal,
+    }));
     const totalQty = sheet2Data.reduce((s, r) => s + r.주문수량, 0);
     const totalListAll = sheet2Data.reduce((s, r) => s + r.총정가, 0);
-    const totalSaleAll = sheet2Data.reduce((s, r) => s + r.총판매금액, 0);
-    sheet2Data.push({ ISBN: "", 상품명: "【합계】", 출판사: "", 주문수량: totalQty, 총정가: totalListAll, 총판매금액: totalSaleAll });
+    const totalFinalAll = sheet2Data.reduce((s, r) => s + r.총판매금액, 0);
+    sheet2Data.push({ ISBN: "", 상품명: "【합계】", 출판사: "", 단가정가: 0, 학원지원금: 0, 주문수량: totalQty, 총정가: totalListAll, 총판매금액: totalFinalAll });
 
     const wb = XLSX.utils.book_new();
     const ws1 = XLSX.utils.json_to_sheet(sheet1Data);
     const ws2 = XLSX.utils.json_to_sheet(sheet2Data);
-    // Column widths
-    ws1["!cols"] = [{ wch: 22 }, { wch: 10 }, { wch: 15 }, { wch: 8 }, { wch: 40 }, { wch: 10 }, { wch: 18 }, { wch: 8 }, { wch: 15 }, { wch: 30 }, { wch: 12 }, { wch: 6 }, { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
-    ws2["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 15 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
+    ws1["!cols"] = [{ wch: 24 }, { wch: 10 }, { wch: 15 }, { wch: 8 }, { wch: 40 }, { wch: 18 }, { wch: 10 }, { wch: 8 }, { wch: 15 }, { wch: 30 }, { wch: 12 }, { wch: 6 }, { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+    ws2["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
     XLSX.utils.book_append_sheet(wb, ws1, "주문정보");
     XLSX.utils.book_append_sheet(wb, ws2, "발주용 상품집계");
 

@@ -20,7 +20,7 @@ import {
 } from "@fluentui/react-icons";
 import { GlassPanel } from "./components/GlassPanel";
 import { type Product } from "./components/ProductCard";
-import { ProductListItem } from "./components/ProductListItem";
+import { ProductScrollSection } from "./components/ProductScrollSection";
 import { StepIndicator } from "./components/StepIndicator";
 import { AddressSearch } from "./components/AddressSearch";
 import { PinInput } from "./components/PinInput";
@@ -29,6 +29,7 @@ import { OrderLookup } from "./components/OrderLookup";
 import { AdminLogin } from "./components/AdminLogin";
 import { AdminProductManagement } from "./components/AdminProductManagement";
 import { CardPaymentModal } from "./components/CardPaymentModal";
+import { MobileProductTabs } from "./components/MobileProductTabs";
 import { formatPhone, formatBizNumber } from "./utils/phoneFormat";
 import { createOrderData, type OrderData } from "./utils/orderUtils";
 import {
@@ -45,10 +46,7 @@ import {
 } from "./utils/dataStore";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { useIsMobile } from "./utils/useIsMobile";
-
-function formatWon(n: number) {
-  return n.toLocaleString("ko-KR") + "원";
-}
+import { calculatePrice, calculateTotalPrice, formatWon } from "./utils/priceCalculator";
 
 const TOTAL_STEPS = 4;
 const BANK_INFO = {
@@ -65,34 +63,43 @@ function buildProductList(
   products: RegisteredProduct[],
   sets: ResolvedSetProduct[]
 ): Product[] {
-  const singles: Product[] = products.map((p) => ({
-    id: p.id,
-    isbn: p.isbn,
-    name: p.name,
-    publisher: p.publisher,
-    listPrice: p.listPrice,
-    salePrice: p.salePrice,
-    imageUrl: getBookImageUrl(p.isbn),
-    type: "single" as const,
-  }));
-  const setProducts: Product[] = sets.map((s) => ({
-    id: s.id,
-    isbn: s.items[0]?.isbn || "",
-    name: s.name,
-    publisher: s.items.map((i) => i.publisher).filter((v, i, a) => a.indexOf(v) === i).join(", "),
-    listPrice: s.listPrice,
-    salePrice: s.salePrice,
-    imageUrl: s.items[0] ? getBookImageUrl(s.items[0].isbn) : "",
-    type: "set" as const,
-    setItems: s.items.map((i) => i.name),
-    setItemDetails: s.items.map((i) => ({
-      isbn: i.isbn,
-      name: i.name,
-      publisher: i.publisher,
-      listPrice: i.listPrice,
-      salePrice: i.salePrice,
-    })),
-  }));
+  const singles: Product[] = products.map((p) => {
+    const prices = calculatePrice(p.listPrice);
+    return {
+      id: p.id,
+      isbn: p.isbn,
+      name: p.name,
+      publisher: p.publisher,
+      listPrice: p.listPrice,
+      salePrice: prices.finalPrice, // 새로운 가격 계산 방식 적용
+      imageUrl: getBookImageUrl(p.isbn),
+      type: "single" as const,
+    };
+  });
+  const setProducts: Product[] = sets.map((s) => {
+    const prices = calculatePrice(s.listPrice);
+    return {
+      id: s.id,
+      isbn: s.items[0]?.isbn || "",
+      name: s.name,
+      publisher: s.items.map((i) => i.publisher).filter((v, i, a) => a.indexOf(v) === i).join(", "),
+      listPrice: s.listPrice,
+      salePrice: prices.finalPrice, // 새로운 가격 계산 방식 적용
+      imageUrl: s.items[0] ? getBookImageUrl(s.items[0].isbn) : "",
+      type: "set" as const,
+      setItems: s.items.map((i) => i.name),
+      setItemDetails: s.items.map((i) => {
+        const itemPrices = calculatePrice(i.listPrice);
+        return {
+          isbn: i.isbn,
+          name: i.name,
+          publisher: i.publisher,
+          listPrice: i.listPrice,
+          salePrice: itemPrices.finalPrice, // 새로운 가격 계산 방식 적용
+        };
+      }),
+    };
+  });
   return [...setProducts, ...singles];
 }
 
@@ -157,8 +164,16 @@ export default function App() {
   );
   const selectedCount = selectedProductData.length;
   const totalQuantity = selectedProductData.reduce((s, p) => s + (quantities[p.id] || 0), 0);
-  const totalList = selectedProductData.reduce((s, p) => s + p.listPrice * (quantities[p.id] || 0), 0);
-  const totalSale = selectedProductData.reduce((s, p) => s + p.salePrice * (quantities[p.id] || 0), 0);
+  
+  // 새로운 가격 계산 방식 적용
+  const totalPrices = useMemo(() => {
+    return calculateTotalPrice(
+      selectedProductData.map((p) => ({
+        listPrice: p.listPrice,
+        quantity: quantities[p.id] || 0,
+      }))
+    );
+  }, [selectedProductData, quantities]);
 
   /* ── 핸들러 ── */
   const handleQuantityChange = useCallback((id: string, qty: number) => {
@@ -405,15 +420,12 @@ export default function App() {
         );
 
       case 1:
+        // 상품을 세트와 단품으로 분리
+        const setProducts = productList.filter((p) => p.type === "set");
+        const singleProducts = productList.filter((p) => p.type === "single");
+        
         return (
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2 mb-1 shrink-0">
-              <Cart24Regular className="text-indigo-500" />
-              <h3 className="text-gray-800">상품 선택</h3>
-            </div>
-            <p className="text-gray-500 text-[13px] mb-3 shrink-0">
-              원하시는 상품을 선택하고 수량을 지정해 주세요.
-            </p>
+          <div className="flex flex-col h-full" style={{ minHeight: '400px', maxHeight: '700px' }}>
             {productList.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-[14px]">
                 <Cart24Regular className="w-10 h-10 text-gray-300 mx-auto mb-3" />
@@ -422,31 +434,53 @@ export default function App() {
               </div>
             ) : (
               <>
-                {/* 상품 리스트 — 영역 내 스크롤 */}
-                <div className="max-h-[560px] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
-                  {productList.map((product) => (
-                    <ProductListItem
-                      key={product.id}
-                      product={product}
-                      quantity={quantities[product.id] || 0}
+                {isMobile ? (
+                  /* ── 모바일: 탭 전환 방식 ── */
+                  <div className="flex-1 min-h-0">
+                    <MobileProductTabs
+                      setProducts={setProducts}
+                      singleProducts={singleProducts}
+                      quantities={quantities}
                       onQuantityChange={handleQuantityChange}
                     />
-                  ))}
-                </div>
-                {/* 하단 요약 바 */}
-                <div className="mt-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-3 text-white shrink-0">
-                  <div className="flex items-center justify-between text-[13px]">
-                    <div className="flex items-center gap-3">
-                      <span>상품 <span className="font-medium">{selectedCount}종</span></span>
-                      <span className="text-white/40">|</span>
-                      <span>수량 <span className="font-medium">{totalQuantity}개</span></span>
+                  </div>
+                ) : (
+                  /* ── 데스크탑: 2열 레이아웃 — 각 열 독립 스크롤 ── */
+                  <div className="flex-1 min-h-0 grid grid-cols-2 gap-3">
+                    <ProductScrollSection
+                      title="세트 상품"
+                      icon="set"
+                      products={setProducts}
+                      quantities={quantities}
+                      onQuantityChange={handleQuantityChange}
+                    />
+                    <ProductScrollSection
+                      title="단품 상품"
+                      icon="single"
+                      products={singleProducts}
+                      quantities={quantities}
+                      onQuantityChange={handleQuantityChange}
+                    />
+                  </div>
+                )}
+                
+                {/* 판매가 계산 영역 — 콤팩트, 항상 하단 고정 */}
+                <div className="shrink-0 mt-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-3 sm:px-4 py-2 sm:py-2.5 text-white shadow-lg">
+                  <div className="flex items-center justify-between text-[11px] sm:text-[12px]">
+                    <div className="flex items-center gap-2">
+                      <span>선택 <span className="font-semibold">{selectedCount}종</span></span>
+                      <span className="text-white/30">|</span>
+                      <span>수량 <span className="font-semibold">{totalQuantity}개</span></span>
                     </div>
                     <div className="flex items-center gap-3">
-                      {totalList !== totalSale && (
-                        <span className="text-white/60 line-through text-[12px]">{formatWon(totalList)}</span>
-                      )}
-                      <span className="font-semibold text-[15px]">{formatWon(totalSale)}</span>
+                      <span className="text-white/60 line-through text-[10px] sm:text-[11px]">{formatWon(totalPrices.listPrice)}</span>
+                      <span className="text-yellow-200 text-[10px] sm:text-[11px]">-{formatWon(totalPrices.discountAmount)}</span>
+                      <span className="text-emerald-200 text-[10px] sm:text-[11px]">지원-{formatWon(totalPrices.schoolSupport)}</span>
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-1 pt-1 border-t border-white/20">
+                    <span className="font-bold text-[12px] sm:text-[13px]">최종 판매가</span>
+                    <span className="font-bold text-[16px] sm:text-[18px]">{formatWon(totalPrices.finalPrice)}</span>
                   </div>
                 </div>
               </>
@@ -553,15 +587,19 @@ export default function App() {
             <div className="rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm p-4 space-y-1">
               <div className="flex justify-between text-[13px]">
                 <span className="text-gray-500">정가 합계</span>
-                <span className="text-gray-500 line-through">{formatWon(totalList)}</span>
+                <span className="text-gray-500 line-through">{formatWon(totalPrices.listPrice)}</span>
               </div>
               <div className="flex justify-between text-[13px]">
                 <span className="text-gray-500">할인</span>
-                <span className="text-red-500">-{formatWon(totalList - totalSale)}</span>
+                <span className="text-red-500">-{formatWon(totalPrices.discountAmount)}</span>
+              </div>
+              <div className="flex justify-between text-[13px]">
+                <span className="text-gray-500">학원지원금</span>
+                <span className="text-emerald-600">-{formatWon(totalPrices.schoolSupport)}</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-white/30">
                 <span className="text-gray-700">결제 금액</span>
-                <span className="text-indigo-600 font-medium">{formatWon(totalSale)}</span>
+                <span className="text-indigo-600 font-medium">{formatWon(totalPrices.finalPrice)}</span>
               </div>
             </div>
           </div>
@@ -618,7 +656,7 @@ export default function App() {
                   </tr>
                   <tr className="border-b border-white/30">
                     <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">결제 금액</td>
-                    <td className="px-4 py-2.5 text-indigo-600 font-medium">{formatWon(totalSale)}</td>
+                    <td className="px-4 py-2.5 text-indigo-600 font-medium">{formatWon(totalPrices.finalPrice)}</td>
                   </tr>
                   <tr className="border-b border-white/30">
                     <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">결제 수단</td>
@@ -721,7 +759,7 @@ export default function App() {
       <Toaster position="top-center" richColors toastOptions={{ style: { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)" } }} />
 
       <CardPaymentModal
-        open={showCardPayment} amount={totalSale}
+        open={showCardPayment} amount={totalPrices.finalPrice}
         onSuccess={() => { setShowCardPayment(false); finalizeOrder(); }}
         onCancel={() => setShowCardPayment(false)}
       />
@@ -763,8 +801,8 @@ export default function App() {
 
         {/* Main Panel */}
         <motion.div layout="position" transition={springTransition}
-          className={`w-full ${step === 1 && view === "order" && productList.length > 4 ? "max-w-lg" : "max-w-lg"} origin-top`}>
-          <GlassPanel className="p-5 sm:p-6 overflow-hidden">
+          className={`w-full ${step === 1 && view === "order" && !isMobile ? "max-w-[1200px]" : "max-w-lg"} origin-top transition-[max-width] duration-500`}>
+          <GlassPanel className={`p-5 sm:p-6 ${step === 1 && view === "order" ? "flex flex-col h-[calc(100vh-200px)] min-h-[500px] max-h-[800px]" : "overflow-hidden"}`}>
             <AnimatePresence mode="wait" custom={view === "order" ? direction : viewDirection}>
               {view === "main" && (
                 <motion.div key="main" custom={viewDirection} variants={viewVariants}
@@ -774,7 +812,8 @@ export default function App() {
               )}
               {view === "order" && (
                 <motion.div key={`order-${step}`} custom={direction} variants={stepVariants}
-                  initial="enter" animate="center" exit="exit" transition={springTransition}>
+                  initial="enter" animate="center" exit="exit" transition={springTransition}
+                  className={step === 1 ? "flex-1 min-h-0" : ""}>
                   {renderStep()}
                 </motion.div>
               )}
@@ -797,20 +836,20 @@ export default function App() {
               {view === "order" && step < TOTAL_STEPS && (
                 <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   transition={springTransition}
-                  className="flex items-center justify-between mt-5 pt-4 border-t border-white/20">
+                  className="flex items-center justify-between mt-3 pt-3 border-t border-white/20 shrink-0">
                   <button type="button" onClick={goPrev}
-                    className="flex items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 hover:bg-white/50 backdrop-blur-sm px-4 py-2.5 text-gray-600 transition-all cursor-pointer">
-                    <ArrowLeft24Regular className="w-4 h-4" />{step === 0 ? "메인" : "이전"}
+                    className="flex items-center gap-1 rounded-lg border border-white/40 bg-white/30 hover:bg-white/50 backdrop-blur-sm px-3 py-2 text-gray-600 text-[13px] transition-all cursor-pointer">
+                    <ArrowLeft24Regular className="w-3.5 h-3.5" />{step === 0 ? "메인" : "이전"}
                   </button>
                   {step < TOTAL_STEPS - 1 ? (
                     <button type="button" onClick={goNext}
-                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2.5 text-white shadow-[0_4px_16px_rgba(99,102,241,0.25)] transition-all hover:shadow-[0_6px_24px_rgba(99,102,241,0.35)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
-                      다음<ArrowRight24Regular className="w-4 h-4" />
+                      className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-2 text-white text-[13px] shadow-[0_4px_16px_rgba(99,102,241,0.25)] transition-all hover:shadow-[0_6px_24px_rgba(99,102,241,0.35)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
+                      다음<ArrowRight24Regular className="w-3.5 h-3.5" />
                     </button>
                   ) : (
                     <button type="button" onClick={handleSubmit}
-                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-white shadow-[0_4px_16px_rgba(16,185,129,0.25)] transition-all hover:shadow-[0_6px_24px_rgba(16,185,129,0.35)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
-                      <Send24Regular className="w-4 h-4" />주문 접수
+                      className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-white text-[13px] shadow-[0_4px_16px_rgba(16,185,129,0.25)] transition-all hover:shadow-[0_6px_24px_rgba(16,185,129,0.35)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
+                      <Send24Regular className="w-3.5 h-3.5" />주문 접수
                     </button>
                   )}
                 </motion.div>
