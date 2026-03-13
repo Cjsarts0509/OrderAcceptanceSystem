@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -34,6 +34,29 @@ function formatWon(n: number) { return n.toLocaleString("ko-KR") + "원"; }
 function formatDate(iso: string) { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 function formatDateTime(iso: string) { const d = new Date(iso); return `${formatDate(iso)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
 
+/** YYYY-MM-DD 자동 포맷 (숫자 입력시 하이픈 자동 삽입) */
+function formatDateInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
+
+function getDefaultDateFrom(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return formatDate(d.toISOString());
+}
+function getDefaultDateTo(): string {
+  return formatDate(new Date().toISOString());
+}
+
+const receiptTypeLabels: Record<string, string> = {
+  none: "-",
+  personal: "개인(소득공제)",
+  business: "사업자(지출증빙)",
+};
+
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "대기", color: "text-amber-700 bg-amber-100 border-amber-300" },
   confirmed: { label: "확인", color: "text-blue-700 bg-blue-100 border-blue-300" },
@@ -44,6 +67,52 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 
 /** 관리자가 수동 변경 가능한 상태 */
 const ALL_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"] as const;
+
+/* ───── StatusPopover: 인라인 상태 변경 팝업 ───── */
+function StatusPopover({ currentStatus, onChangeStatus, disabled }: { currentStatus: string; onChangeStatus: (s: string) => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  if (disabled) {
+    return <span className={`inline-block text-[11px] px-2.5 py-1 rounded-full border ${statusLabels[currentStatus]?.color || ""}`}>{statusLabels[currentStatus]?.label || currentStatus}</span>;
+  }
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button type="button" onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border cursor-pointer transition-all hover:shadow-sm active:scale-95 ${statusLabels[currentStatus]?.color || "text-gray-500 bg-gray-50 border-gray-200"}`}>
+        {statusLabels[currentStatus]?.label || currentStatus}
+        <svg className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-30 top-full left-1/2 -translate-x-1/2 mt-1.5 bg-white rounded-xl border border-gray-200 shadow-[0_8px_32px_rgba(0,0,0,0.12)] p-1.5 min-w-[120px]"
+          >
+            {ALL_STATUSES.map((s) => (
+              <button key={s} type="button"
+                onClick={() => { onChangeStatus(s); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] transition-all cursor-pointer mb-0.5 last:mb-0 ${currentStatus === s ? `${statusLabels[s].color} font-semibold` : "text-gray-600 hover:bg-gray-50"}`}>
+                <span className={`w-2 h-2 rounded-full shrink-0 ${currentStatus === s ? "ring-2 ring-offset-1" : ""} ${s === "pending" ? "bg-amber-400" : s === "confirmed" ? "bg-blue-400" : s === "shipped" ? "bg-indigo-400" : s === "delivered" ? "bg-emerald-400" : "bg-red-400"}`} />
+                {statusLabels[s].label}
+                {currentStatus === s && <span className="ml-auto text-[10px] opacity-60">현재</span>}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 const inputClass = "w-full rounded-lg border border-gray-200 bg-white py-2 px-3 text-gray-900 text-[14px] placeholder:text-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 transition-all";
 const springTransition = { type: "spring" as const, damping: 30, stiffness: 260 };
@@ -59,13 +128,15 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [waybillFilter, setWaybillFilter] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(getDefaultDateFrom);
+  const [dateTo, setDateTo] = useState(getDefaultDateTo);
   const [errorLogs, setErrorLogs] = useState<WaybillLog[]>([]);
   const [showErrorPanel, setShowErrorPanel] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const trackingFileRef = useRef<HTMLInputElement>(null);
+  const dateFromCalRef = useRef<HTMLInputElement>(null);
+  const dateToCalRef = useRef<HTMLInputElement>(null);
 
   const filteredOrders = useMemo(() => orderList.filter((o) => {
     const q = searchQuery.toLowerCase();
@@ -101,10 +172,23 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
   /** 일괄 상태 변경 */
   const handleBulkStatusChange = async (newStatus: string) => {
     if (selectedIds.length === 0) { toast.error("상태를 변경할 주문을 선택해 주세요."); return; }
+    // 취소 상태인 주문은 제외
+    const changeable = selectedIds.filter((id) => {
+      const order = orderList.find((o) => o.orderNumber === id);
+      return order && order.status !== "cancelled";
+    });
+    if (changeable.length === 0) {
+      toast.error("선택된 주문이 모두 취소 상태여서 변경할 수 없습니다.");
+      return;
+    }
+    const skipped = selectedIds.length - changeable.length;
     try {
-      await bulkUpdateOrdersRemote(selectedIds.map((on) => ({ orderNumber: on, fields: { status: newStatus } })));
-      setOrderList((p) => p.map((o) => selectedIds.includes(o.orderNumber) ? { ...o, status: newStatus as any } : o));
-      toast.success(`${selectedIds.length}건의 상태가 "${statusLabels[newStatus]?.label}"(으)로 변경되었습니다.`);
+      await bulkUpdateOrdersRemote(changeable.map((on) => ({ orderNumber: on, fields: { status: newStatus } })));
+      setOrderList((p) => p.map((o) => changeable.includes(o.orderNumber) ? { ...o, status: newStatus as any } : o));
+      const msg = skipped > 0
+        ? `${changeable.length}건 변경 완료 (취소 상태 ${skipped}건 제외)`
+        : `${changeable.length}건의 상태가 "${statusLabels[newStatus]?.label}"(으)로 변경되었습니다.`;
+      toast.success(msg);
       setSelectedIds([]);
     } catch (e) {
       console.error("[AdminOrderManagement] bulk status change failed:", e);
@@ -321,7 +405,7 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="shrink-0 mb-4">
-        <h2 className="text-gray-800">주문 관리</h2>
+        <h2 className="text-gray-900">주문 관리</h2>
         <p className="text-gray-500 text-[13px] mt-0.5">주문 목록을 조회하고 운송장을 등록하세요. 행을 블클릭하면 상세 정보를 확인할 수 있습니다.</p>
       </div>
 
@@ -344,9 +428,23 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
         <div className="flex items-center gap-3 flex-wrap mt-3">
           <div className="flex items-center gap-1.5">
             <Calendar24Regular className="w-4 h-4 text-gray-400 shrink-0" />
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-lg border border-gray-200 bg-white py-1.5 px-2 text-gray-800 text-[12px] outline-none focus:border-indigo-500 cursor-pointer" />
-            <span className="text-gray-400 text-[12px]">~</span>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-lg border border-gray-200 bg-white py-1.5 px-2 text-gray-800 text-[12px] outline-none focus:border-indigo-500 cursor-pointer" />
+            <div className="relative group">
+              <input type="text" inputMode="numeric" value={dateFrom} onChange={(e) => setDateFrom(formatDateInput(e.target.value))} placeholder="YYYY-MM-DD" maxLength={10}
+                className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-8 text-gray-800 text-[12px] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:bg-indigo-50/30 w-[130px] text-center transition-all selection:bg-indigo-200 selection:text-indigo-900" />
+              <button type="button" onClick={() => dateFromCalRef.current?.showPicker?.()} className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-300 hover:text-indigo-500 transition-colors cursor-pointer rounded hover:bg-indigo-50">
+                <Calendar24Regular className="w-3.5 h-3.5" />
+              </button>
+              <input ref={dateFromCalRef} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="absolute inset-0 opacity-0 w-0 h-0 overflow-hidden" tabIndex={-1} />
+            </div>
+            <span className="text-gray-500 text-[12px]">~</span>
+            <div className="relative group">
+              <input type="text" inputMode="numeric" value={dateTo} onChange={(e) => setDateTo(formatDateInput(e.target.value))} placeholder="YYYY-MM-DD" maxLength={10}
+                className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-8 text-gray-800 text-[12px] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:bg-indigo-50/30 w-[130px] text-center transition-all selection:bg-indigo-200 selection:text-indigo-900" />
+              <button type="button" onClick={() => dateToCalRef.current?.showPicker?.()} className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-300 hover:text-indigo-500 transition-colors cursor-pointer rounded hover:bg-indigo-50">
+                <Calendar24Regular className="w-3.5 h-3.5" />
+              </button>
+              <input ref={dateToCalRef} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="absolute inset-0 opacity-0 w-0 h-0 overflow-hidden" tabIndex={-1} />
+            </div>
           </div>
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             <button type="button" onClick={downloadOrderExcel} disabled={selectedIds.length === 0}
@@ -413,8 +511,8 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
               </div>
               <div className="max-h-[150px] overflow-y-auto scrollbar-thin">
                 <table className="w-full text-[13px]">
-                  <thead><tr className="border-b border-red-100/50"><th className="text-left text-red-400 py-2 px-3">주문번호</th><th className="text-left text-red-400 py-2 px-3">주문자</th><th className="text-left text-red-400 py-2 px-3">실패 사유</th><th className="text-left text-red-400 py-2 px-3">시각</th></tr></thead>
-                  <tbody>{errorLogs.map((log) => (<tr key={log.id} className="border-b border-red-50/50"><td className="py-2 px-3 font-mono text-gray-600 text-[12px]">{log.orderNumber}</td><td className="py-2 px-3 text-gray-700">{log.customerName}</td><td className="py-2 px-3 text-red-600">{log.reason}</td><td className="py-2 px-3 text-gray-400 text-[12px]">{formatDateTime(log.timestamp)}</td></tr>))}</tbody>
+                  <thead><tr className="border-b border-red-100/50"><th className="text-left text-red-600 font-semibold py-2 px-3">주문번호</th><th className="text-left text-red-600 font-semibold py-2 px-3">주문자</th><th className="text-left text-red-600 font-semibold py-2 px-3">실패 사유</th><th className="text-left text-red-600 font-semibold py-2 px-3">시각</th></tr></thead>
+                  <tbody>{errorLogs.map((log) => (<tr key={log.id} className="border-b border-red-50/50"><td className="py-2 px-3 font-mono text-gray-600 text-[12px]">{log.orderNumber}</td><td className="py-2 px-3 text-gray-700">{log.customerName}</td><td className="py-2 px-3 text-red-600">{log.reason}</td><td className="py-2 px-3 text-gray-600 text-[12px]">{formatDateTime(log.timestamp)}</td></tr>))}</tbody>
                 </table>
               </div>
             </GlassPanel>
@@ -425,7 +523,7 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
       {/* Order Table */}
       <GlassPanel className="p-5 flex-1 min-h-0 flex flex-col overflow-hidden">
         <div className="flex items-center justify-between mb-3 shrink-0">
-          <h3 className="text-gray-800 flex items-center gap-2">
+          <h3 className="text-gray-900 flex items-center gap-2">
             <DocumentBulletList24Regular className="text-indigo-500" /> 주문 목록 <span className="text-indigo-500 text-[13px]">({filteredOrders.length}건)</span>
           </h3>
         </div>
@@ -434,13 +532,14 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
             <thead className="sticky top-0 z-10 bg-white">
               <tr className="border-b border-gray-200">
                 <th className="py-2.5 px-3 w-[40px]"><input type="checkbox" checked={filteredOrders.length > 0 && selectedIds.length === filteredOrders.length} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-300 cursor-pointer accent-indigo-500" /></th>
-                <th className="text-left text-gray-400 py-2.5 px-3">주문번호</th>
-                <th className="text-left text-gray-400 py-2.5 px-3">주문자</th>
-                <th className="text-right text-gray-400 py-2.5 px-3">결제금액</th>
-                <th className="text-center text-gray-400 py-2.5 px-3">주문일</th>
-                <th className="text-center text-gray-400 py-2.5 px-3">상태</th>
-                <th className="text-center text-gray-400 py-2.5 px-3">상태 변경</th>
-                <th className="text-center text-gray-400 py-2.5 px-3">운송장</th>
+                <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">주문번호</th>
+                <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">주문자</th>
+                <th className="text-right text-gray-600 py-2.5 px-3 font-semibold">결제금액</th>
+                <th className="text-center text-gray-600 py-2.5 px-3 font-semibold">주문일</th>
+                <th className="text-center text-gray-600 py-2.5 px-3 font-semibold">영수증</th>
+                <th className="text-center text-gray-600 py-2.5 px-3 font-semibold">영수증번호</th>
+                <th className="text-center text-gray-600 py-2.5 px-3 font-semibold">상태</th>
+                <th className="text-center text-gray-600 py-2.5 px-3 font-semibold">운송장</th>
               </tr>
             </thead>
             <tbody>
@@ -449,30 +548,27 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
                   onDoubleClick={() => openDetail(order)}
                   className={`border-b border-white/20 transition-colors cursor-pointer ${idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"} hover:bg-indigo-50 ${selectedIds.includes(order.orderNumber) ? "bg-indigo-50" : ""}`}>
                   <td className="py-2.5 px-3"><input type="checkbox" checked={selectedIds.includes(order.orderNumber)} onChange={() => toggleSelect(order.orderNumber)} className="w-4 h-4 rounded border-gray-300 cursor-pointer accent-indigo-500" /></td>
-                  <td className="py-2.5 px-3 font-mono text-gray-500 text-[12px]">{order.orderNumber}</td>
-                  <td className="py-2.5 px-3 text-gray-700">{order.customerName}</td>
-                  <td className="py-2.5 px-3 text-right text-indigo-600">{formatWon(order.totalSalePrice)}</td>
-                  <td className="py-2.5 px-3 text-center text-gray-500 text-[12px]">{formatDate(order.createdAt)}</td>
-                  <td className="py-2.5 px-3 text-center"><span className={`inline-block text-[11px] px-2.5 py-1 rounded-full border ${statusLabels[order.status]?.color || "text-gray-500 bg-gray-50/50"}`}>{statusLabels[order.status]?.label || order.status}</span></td>
+                  <td className="py-2.5 px-3 font-mono text-gray-700 text-[12px]">{order.orderNumber}</td>
+                  <td className="py-2.5 px-3 text-gray-900 font-medium">{order.customerName}</td>
+                  <td className="py-2.5 px-3 text-right text-indigo-700 font-semibold">{formatWon(order.totalSalePrice)}</td>
+                  <td className="py-2.5 px-3 text-center text-gray-700 text-[12px]">{formatDate(order.createdAt)}</td>
+                  <td className="py-2.5 px-3 text-center text-gray-600 text-[12px]">{receiptTypeLabels[order.receiptType || "none"]}</td>
+                  <td className="py-2.5 px-3 text-center text-gray-700 text-[12px] font-mono">{order.receiptNumber || "-"}</td>
                   <td className="py-2.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      value={order.status}
-                      onChange={(e) => handleStatusChange(order.orderNumber, e.target.value)}
-                      className={`rounded-lg border text-[11px] py-1 px-1.5 outline-none cursor-pointer transition-colors ${statusLabels[order.status]?.color || "border-gray-200 bg-white text-gray-600"}`}
-                    >
-                      {ALL_STATUSES.map((s) => (
-                        <option key={s} value={s}>{statusLabels[s].label}</option>
-                      ))}
-                    </select>
+                    {order.status === "cancelled" ? (
+                      <span className={`inline-block text-[11px] px-2.5 py-1 rounded-full border ${statusLabels.cancelled.color}`}>취소</span>
+                    ) : (
+                      <StatusPopover currentStatus={order.status} onChangeStatus={(s) => handleStatusChange(order.orderNumber, s)} />
+                    )}
                   </td>
                   <td className="py-2.5 px-3 text-center">
                     {order.waybillStatus === "complete" && <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border text-emerald-600 bg-emerald-50/50 border-emerald-200/50"><CheckmarkCircle24Filled className="w-3.5 h-3.5" />출력완료</span>}
                     {order.waybillStatus === "failed" && <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border text-red-600 bg-red-50/50 border-red-200/50"><ErrorCircle24Regular className="w-3.5 h-3.5" />실패</span>}
-                    {order.waybillStatus === "none" && <span className="text-gray-400 text-[11px]">-</span>}
+                    {order.waybillStatus === "none" && <span className="text-gray-500 text-[11px]">-</span>}
                   </td>
                 </motion.tr>
               ))}
-              {filteredOrders.length === 0 && (<tr><td colSpan={8} className="text-center py-12 text-gray-400 text-[13px]">{searchQuery || statusFilter !== "all" || waybillFilter !== "all" || dateFrom || dateTo ? "검색 조건에 맞는 주문이 없습니다." : "주문 데이터가 없습니다."}</td></tr>)}
+              {filteredOrders.length === 0 && (<tr><td colSpan={9} className="text-center py-12 text-gray-400 text-[13px]">{searchQuery || statusFilter !== "all" || waybillFilter !== "all" || dateFrom || dateTo ? "검색 조건에 맞는 주문이 없습니다." : "주문 데이터가 없습니다."}</td></tr>)}
             </tbody>
           </table>
         </div>
@@ -490,16 +586,16 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
                   <span className="text-indigo-600 text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 border border-indigo-200 font-medium">주문상세</span>
                   <span className={`text-[11px] px-2 py-0.5 rounded-full border ${statusLabels[detailOrder.status]?.color || ""}`}>{statusLabels[detailOrder.status]?.label}</span>
                 </div>
-                <h3 className="text-gray-800">{detailOrder.orderNumber}</h3>
-                <p className="text-gray-400 text-[12px] mt-0.5">{formatDateTime(detailOrder.createdAt)}</p>
+                <h3 className="text-gray-900">{detailOrder.orderNumber}</h3>
+                <p className="text-gray-500 text-[12px] mt-0.5">{formatDateTime(detailOrder.createdAt)}</p>
               </div>
 
-              {/* 상태 변경 (개별) */}
-              {ALL_STATUSES.includes(detailOrder.status) && (
+              {/* 상태 변경 (개별) — 취소 상태는 변경 불가 */}
+              {detailOrder.status !== "cancelled" && (
                 <div className="mb-5 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                  <p className="text-gray-500 text-[12px] mb-2">상태 변경</p>
+                  <p className="text-gray-700 text-[12px] font-medium mb-2">상태 변경</p>
                   <div className="flex gap-2">
-                    {ALL_STATUSES.map((s) => (
+                    {ALL_STATUSES.filter(s => s !== "cancelled").map((s) => (
                       <button key={s} type="button" onClick={() => handleStatusChange(detailOrder.orderNumber, s)}
                         className={`flex-1 rounded-lg border py-2 text-[13px] transition-all cursor-pointer ${detailOrder.status === s ? `${statusLabels[s].color} border-current font-medium` : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"}`}>
                         {statusLabels[s].label}
@@ -508,17 +604,22 @@ export function AdminOrderManagement({ orders, onDeleteOrders }: AdminOrderManag
                   </div>
                 </div>
               )}
+              {detailOrder.status === "cancelled" && (
+                <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3">
+                  <p className="text-red-600 text-[13px] font-medium">이 주문은 취소된 상태로 상태 변경이 불가합니다.</p>
+                </div>
+              )}
 
               <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden mb-5">
                 <table className="w-full text-[13px]">
                   <tbody>
-                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap w-[100px]">주문자</td><td className="px-4 py-2.5"><input type="text" value={detailOrder.customerName} onChange={(e) => updateOrderField(detailOrder.orderNumber, "customerName", e.target.value)} className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none text-gray-800 w-full py-0.5 transition-colors" /></td></tr>
-                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">연락처</td><td className="px-4 py-2.5"><input type="text" value={detailOrder.customerPhone} onChange={(e) => updateOrderField(detailOrder.orderNumber, "customerPhone", e.target.value)} className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none text-gray-800 w-full py-0.5 transition-colors" /></td></tr>
-                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap align-top">배송주소</td><td className="px-4 py-2.5">{detailOrder.zipCode && <span className="text-gray-500 text-[11px] mr-2">[{detailOrder.zipCode}]</span>}<input type="text" value={detailOrder.shippingAddress} onChange={(e) => updateOrderField(detailOrder.orderNumber, "shippingAddress", e.target.value)} className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none text-gray-800 w-full py-0.5 transition-colors" />{detailOrder.shippingAddressDetail && <input type="text" value={detailOrder.shippingAddressDetail} onChange={(e) => updateOrderField(detailOrder.orderNumber, "shippingAddressDetail", e.target.value)} className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none text-gray-600 text-[12px] w-full py-0.5 mt-1 transition-colors" />}</td></tr>
-                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap align-top">주문상품</td><td className="px-4 py-2.5"><div className="space-y-1.5">{detailOrder.products.map((p) => (<div key={p.id} className="flex justify-between items-center"><div><span className="text-gray-800 font-medium">{p.name}</span>{(p.quantity ?? 1) > 1 && <span className="text-indigo-600 text-[12px] ml-1 font-semibold">x{p.quantity}</span>}{p.type === "set" && p.setItems && <span className="text-gray-500 text-[11px] ml-1.5">({p.setItems.join(", ")})</span>}</div><span className="text-indigo-700 shrink-0 ml-3 font-semibold">{formatWon(p.listPrice * (p.quantity ?? 1))}</span></div>))}</div></td></tr>
-                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">결제금액</td><td className="px-4 py-2.5 text-indigo-700 font-bold">{formatWon(detailOrder.totalSalePrice)} <span className="text-gray-500 text-[11px] ml-2 line-through">{formatWon(detailOrder.totalListPrice)}</span></td></tr>
-                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">결제수단</td><td className="px-4 py-2.5 text-gray-800 font-medium">{detailOrder.paymentMethod === "card" ? "카드 결제" : "계좌 이체"}{detailOrder.receiptType && detailOrder.receiptType !== "none" && <span className="text-gray-500 text-[12px] ml-2">(현금영수증: {detailOrder.receiptType === "personal" ? "개인" : "사업자"} {detailOrder.receiptNumber})</span>}</td></tr>
-                    {detailOrder.trackingNumber && <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">운송장번호</td><td className="px-4 py-2.5 text-gray-800 font-mono font-medium">{detailOrder.trackingNumber}</td></tr>}
+                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-600 font-medium whitespace-nowrap w-[100px]">주문자</td><td className="px-4 py-2.5"><input type="text" value={detailOrder.customerName} onChange={(e) => updateOrderField(detailOrder.orderNumber, "customerName", e.target.value)} className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none text-gray-800 w-full py-0.5 transition-colors" /></td></tr>
+                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-600 font-medium whitespace-nowrap">연락처</td><td className="px-4 py-2.5"><input type="text" value={detailOrder.customerPhone} onChange={(e) => updateOrderField(detailOrder.orderNumber, "customerPhone", e.target.value)} className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none text-gray-800 w-full py-0.5 transition-colors" /></td></tr>
+                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-600 font-medium whitespace-nowrap align-top">배송주소</td><td className="px-4 py-2.5">{detailOrder.zipCode && <span className="text-gray-500 text-[11px] mr-2">[{detailOrder.zipCode}]</span>}<input type="text" value={detailOrder.shippingAddress} onChange={(e) => updateOrderField(detailOrder.orderNumber, "shippingAddress", e.target.value)} className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none text-gray-800 w-full py-0.5 transition-colors" />{detailOrder.shippingAddressDetail && <input type="text" value={detailOrder.shippingAddressDetail} onChange={(e) => updateOrderField(detailOrder.orderNumber, "shippingAddressDetail", e.target.value)} className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none text-gray-600 text-[12px] w-full py-0.5 mt-1 transition-colors" />}</td></tr>
+                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-600 font-medium whitespace-nowrap align-top">주문상품</td><td className="px-4 py-2.5"><div className="space-y-1.5">{detailOrder.products.map((p) => (<div key={p.id} className="flex justify-between items-center"><div><span className="text-gray-800 font-medium">{p.name}</span>{(p.quantity ?? 1) > 1 && <span className="text-indigo-600 text-[12px] ml-1 font-semibold">x{p.quantity}</span>}{p.type === "set" && p.setItems && <span className="text-gray-500 text-[11px] ml-1.5">({p.setItems.join(", ")})</span>}</div><span className="text-indigo-700 shrink-0 ml-3 font-semibold">{formatWon(p.listPrice * (p.quantity ?? 1))}</span></div>))}</div></td></tr>
+                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-600 font-medium whitespace-nowrap">결제금액</td><td className="px-4 py-2.5 text-indigo-700 font-bold">{formatWon(detailOrder.totalSalePrice)} <span className="text-gray-500 text-[11px] ml-2 line-through">{formatWon(detailOrder.totalListPrice)}</span></td></tr>
+                    <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-600 font-medium whitespace-nowrap">결제수단</td><td className="px-4 py-2.5 text-gray-800 font-medium">{detailOrder.paymentMethod === "card" ? "카드 결제" : "계좌 이체"}{detailOrder.receiptType && detailOrder.receiptType !== "none" && <span className="text-gray-500 text-[12px] ml-2">(현금영수증: {receiptTypeLabels[detailOrder.receiptType]} {detailOrder.receiptNumber})</span>}</td></tr>
+                    {detailOrder.trackingNumber && <tr className="border-b border-gray-100"><td className="px-4 py-2.5 text-gray-600 font-medium whitespace-nowrap">운송장번호</td><td className="px-4 py-2.5 text-gray-800 font-mono font-medium">{detailOrder.trackingNumber}</td></tr>}
                   </tbody>
                 </table>
               </div>

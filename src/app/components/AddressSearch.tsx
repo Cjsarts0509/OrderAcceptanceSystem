@@ -10,6 +10,7 @@ declare global {
 interface AddressSearchProps {
   value: string;
   onChange: (address: string, zipCode: string) => void;
+  onSelect?: () => void;
 }
 
 let scriptLoaded = false;
@@ -42,7 +43,7 @@ function loadDaumPostcode(): Promise<void> {
   });
 }
 
-export function AddressSearch({ value, onChange }: AddressSearchProps) {
+export function AddressSearch({ value, onChange, onSelect }: AddressSearchProps) {
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -65,13 +66,15 @@ export function AddressSearch({ value, onChange }: AddressSearchProps) {
         const roadAddr = data.roadAddress || data.jibunAddress || "";
         const zipCode = data.zonecode || "";
         onChange(roadAddr, zipCode);
+        // 주소 선택 후 콜백 호출 (상세주소 포커스용)
+        onSelect?.();
       },
       width: "100%",
       height: "100%",
     }).open({
       popupTitle: "주소 검색",
     });
-  }, [onChange]);
+  }, [onChange, onSelect]);
 
   return (
     <div className="relative">

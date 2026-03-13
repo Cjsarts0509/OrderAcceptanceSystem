@@ -59,7 +59,8 @@ export function ProductCard({ product, selected, onToggle }: ProductCardProps) {
 
       <div className="p-2 space-y-0.5">
         <h4 className="text-gray-900 text-[12px] truncate font-semibold">{product.name}</h4>
-        <p className="text-gray-500 text-[10px]">{product.publisher}</p>
+        <p className="text-gray-600 text-[10px]">{product.publisher}</p>
+        <p className="text-gray-500 text-[9px] font-mono">ISBN: {product.isbn}</p>
         <div className="flex items-baseline gap-1 mt-0.5">
           <span className="text-indigo-700 text-[13px] font-bold">
             {formatWon(product.listPrice)}

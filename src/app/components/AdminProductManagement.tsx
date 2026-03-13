@@ -51,7 +51,7 @@ function formatWon(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
 
-const inputClass = "w-full rounded-lg border border-gray-200 bg-white py-2 px-3 text-gray-900 text-[14px] placeholder:text-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 transition-all";
+const inputClass = "w-full rounded-lg border border-gray-200 bg-white py-2 px-3 text-gray-900 text-[14px] placeholder:text-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 focus:bg-indigo-50/20 transition-all selection:bg-indigo-200 selection:text-indigo-900";
 
 /* ───── Excel Helpers (XLSX) ───── */
 function exportProductsToExcel(products: RegisteredProduct[]) {
@@ -361,6 +361,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
     getOrders().then(setOrders).catch((e) => console.warn("[Admin] getOrders failed:", e));
   }, [activeTab]);
 
+
+
   /* ───── Sidebar tree items ───── */
   const sidebarTree = [
     { key: "products" as SidebarTab, label: "단품 관리", icon: Box24Regular },
@@ -391,7 +393,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
             </div>
             <div>
               <p className="text-gray-700 text-[14px]">관리자</p>
-              <p className="text-gray-400 text-[11px]">대시보드</p>
+              <p className="text-gray-500 text-[11px]">대시보드</p>
             </div>
           </div>
         </div>
@@ -434,6 +436,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
             <ClipboardTextLtr24Regular className="w-4.5 h-4.5 text-indigo-500" />
             주문 관리
           </button>
+
         </nav>
 
         <div className="p-3 border-t border-gray-200">
@@ -456,13 +459,13 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
               <motion.div key="products" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
                 transition={{ type: "spring", damping: 30, stiffness: 260 }} className="space-y-6 flex flex-col flex-1 overflow-hidden">
                 <div className="shrink-0">
-                  <h2 className="text-gray-800">단품 상품 관리</h2>
+                  <h2 className="text-gray-900">단품 상품 관리</h2>
                   <p className="text-gray-500 text-[13px] mt-0.5">ISBN으로 도서를 검색하고 상품을 등록하세요.</p>
                 </div>
 
                 {/* 상품 등록/수정 폼 */}
                 <GlassPanel className="p-5 shrink-0">
-                  <h3 className="text-gray-800 flex items-center gap-2 mb-4">
+                  <h3 className="text-gray-900 flex items-center gap-2 mb-4">
                     {editingProductId ? <Edit24Regular className="text-amber-500" /> : <Add24Regular className="text-indigo-500" />}
                     {editingProductId ? "상품 수정" : "상품 등록"}
                     {editingProductId && (
@@ -484,22 +487,22 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                     </div>
                     <div className="flex-1 grid grid-cols-2 gap-3">
                       <div className="col-span-2">
-                        <label className="block text-gray-500 text-[12px] mb-1">ISBN (13자리)</label>
+                        <label className="block text-gray-700 text-[12px] font-medium mb-1">ISBN (13자리)</label>
                         <div className="relative">
                           <Search24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                           <input type="text" value={formIsbn} onChange={(e) => handleIsbnChange(e.target.value)} placeholder="978XXXXXXXXXX" maxLength={13} className={`${inputClass} !pl-9 font-mono`} />
                         </div>
                       </div>
                       <div className="col-span-2">
-                        <label className="block text-gray-500 text-[12px] mb-1">상품명</label>
+                        <label className="block text-gray-700 text-[12px] font-medium mb-1">상품명</label>
                         <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="도서 제목" className={inputClass} />
                       </div>
                       <div>
-                        <label className="block text-gray-500 text-[12px] mb-1">출판사</label>
+                        <label className="block text-gray-700 text-[12px] font-medium mb-1">출판사</label>
                         <input type="text" value={formPublisher} onChange={(e) => setFormPublisher(e.target.value)} placeholder="출판사" className={inputClass} />
                       </div>
                       <div>
-                        <label className="block text-gray-500 text-[12px] mb-1">정가</label>
+                        <label className="block text-gray-700 text-[12px] font-medium mb-1">정가</label>
                         <input type="number" value={formListPrice} onChange={(e) => handleListPriceChange(e.target.value)} placeholder="0" className={inputClass} />
                       </div>
                       <div className="col-span-2 flex justify-end pt-1">
@@ -517,7 +520,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                 <GlassPanel className="p-4 shrink-0">
                   <div className="flex items-center gap-3 flex-wrap">
                     <ArrowUpload24Regular className="w-5 h-5 text-indigo-500 shrink-0" />
-                    <span className="text-gray-600 text-[13px]">엑셀(XLSX/XLS/CSV) 일괄 등록 — ISBN, 상품명, 출판사, 정가</span>
+                    <span className="text-gray-700 text-[13px] font-semibold">엑셀(XLSX/XLS/CSV) 일괄 등록 — <span className="text-indigo-600">ISBN, 상품명, 출판사, 정가</span></span>
                     <div className="flex gap-2 ml-auto">
                       <button type="button" onClick={downloadExcelTemplate}
                         className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-gray-700 text-[12px] hover:bg-gray-50 transition-colors cursor-pointer">
@@ -536,7 +539,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
 
                 {/* 등록된 상품 목록 */}
                 <GlassPanel className="p-5 flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <h3 className="text-gray-800 flex items-center gap-2 mb-4 shrink-0">
+                  <h3 className="text-gray-900 flex items-center gap-2 mb-4 shrink-0">
                     <Box24Regular className="text-indigo-500" />
                     등록된 상품 <span className="text-indigo-500 text-[13px]">({products.length}건)</span>
                   </h3>
@@ -544,21 +547,21 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                     <table className="w-full text-[13px]">
                       <thead>
                         <tr className="border-b border-gray-200">
-                          <th className="text-left text-gray-500 py-2.5 px-3 font-semibold">ISBN</th>
-                          <th className="text-left text-gray-400 py-2.5 px-3">상품명</th>
-                          <th className="text-left text-gray-400 py-2.5 px-3">출판사</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">정가</th>
-                          <th className="text-center text-gray-400 py-2.5 px-3">관리</th>
+                          <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">ISBN</th>
+                          <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">상품명</th>
+                          <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">출판사</th>
+                          <th className="text-right text-gray-600 py-2.5 px-3 font-semibold">정가</th>
+                          <th className="text-center text-gray-600 py-2.5 px-3 font-semibold">관리</th>
                         </tr>
                       </thead>
                       <tbody>
                         {products.map((p, idx) => (
                           <motion.tr key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
                             className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${editingProductId === p.id ? "bg-amber-50" : ""}`}>
-                            <td className="py-2.5 px-3 font-mono text-gray-500 text-[12px]">{p.isbn}</td>
-                            <td className="py-2.5 px-3 text-gray-700">{p.name}</td>
-                            <td className="py-2.5 px-3 text-gray-500">{p.publisher}</td>
-                            <td className="py-2.5 px-3 text-right text-gray-500">{formatWon(p.listPrice)}</td>
+                            <td className="py-2.5 px-3 font-mono text-gray-700 text-[12px]">{p.isbn}</td>
+                            <td className="py-2.5 px-3 text-gray-900 font-medium">{p.name}</td>
+                            <td className="py-2.5 px-3 text-gray-700">{p.publisher}</td>
+                            <td className="py-2.5 px-3 text-right text-gray-700 font-medium">{formatWon(p.listPrice)}</td>
                             <td className="py-2.5 px-3 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" onClick={() => startEditProduct(p)} className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-amber-500 hover:bg-amber-50/50 transition-colors cursor-pointer">
@@ -586,8 +589,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
               <motion.div key="sets" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                 transition={{ type: "spring", damping: 30, stiffness: 260 }} className="space-y-6 flex flex-col flex-1 overflow-hidden">
                 <div className="shrink-0">
-                  <h2 className="text-gray-800">세트 상품 구성</h2>
-                  <p className="text-gray-400 text-[13px] mt-0.5">등록된 단품을 조합하여 세트 상품을 만드세요.</p>
+                  <h2 className="text-gray-900">세트 상품 구성</h2>
+                  <p className="text-gray-500 text-[13px] mt-0.5">등록된 단품을 조합하여 세트 상품을 만드세요.</p>
                 </div>
 
                 {products.length === 0 ? (
@@ -598,7 +601,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                   </GlassPanel>
                 ) : (
                   <GlassPanel className="p-5 shrink-0">
-                    <h3 className="text-gray-800 flex items-center gap-2 mb-4">
+                    <h3 className="text-gray-900 flex items-center gap-2 mb-4">
                       {editingSetId ? <Edit24Regular className="text-amber-500" /> : <Add24Regular className="text-indigo-500" />}
                       {editingSetId ? "세트 수정" : "새 세트 상품 만들기"}
                       {editingSetId && (
@@ -608,7 +611,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-gray-500 text-[12px] mb-1">세트 이름</label>
+                          <label className="block text-gray-700 text-[12px] font-medium mb-1">세트 이름</label>
                           <input type="text" value={setName} onChange={(e) => setSetName(e.target.value)} placeholder="예: 2026 필독서 세트" className={inputClass} />
                         </div>
                         {setSelectedIds.length > 0 && (() => {
@@ -629,16 +632,17 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                       <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-start">
                         <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex flex-col">
                           <div className="px-3 py-2.5 border-b border-gray-200">
-                            <p className="text-gray-500 text-[12px]">등록된 단품 상품</p>
+                            <p className="text-gray-700 text-[12px] font-medium">등록된 단품 상품</p>
                           </div>
-                          <div className="h-[360px] overflow-y-auto">
+                          <div className="h-[360px] overflow-y-auto scrollbar-thin">
                             {products.filter((p) => !setSelectedIds.includes(p.id)).map((p) => (
                               <button key={p.id} type="button" onClick={() => {
                                 const newIds = [...setSelectedIds, p.id];
                                 setSetSelectedIds(newIds);
                               }} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-indigo-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0">
-                                <span className="text-gray-700 text-[13px] truncate flex-1">{p.name}</span>
-                                <span className="text-gray-400 text-[11px] shrink-0">{formatWon(p.listPrice)}</span>
+                                <span className="text-gray-500 text-[10px] font-mono shrink-0">{p.isbn}</span>
+                                <span className="text-gray-800 text-[13px] truncate flex-1 font-medium">{p.name}</span>
+                                <span className="text-gray-500 text-[11px] shrink-0">{formatWon(p.listPrice)}</span>
                               </button>
                             ))}
                             {products.filter((p) => !setSelectedIds.includes(p.id)).length === 0 && (
@@ -646,8 +650,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                             )}
                           </div>
                           <div className="px-3 py-2 border-t border-gray-200 flex items-center justify-between shrink-0">
-                            <span className="text-gray-400 text-[11px]">정가 총계</span>
-                            <span className="text-gray-600 text-[12px]">{formatWon(products.filter((p) => !setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0))}</span>
+                            <span className="text-gray-500 text-[11px] font-medium">정가 총계</span>
+                            <span className="text-gray-700 text-[12px] font-medium">{formatWon(products.filter((p) => !setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0))}</span>
                           </div>
                         </div>
                         <div className="flex flex-col items-center gap-2 pt-10">
@@ -656,16 +660,17 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                         </div>
                         <div className="rounded-xl border border-indigo-200/40 bg-indigo-50/20 backdrop-blur-sm overflow-hidden flex flex-col">
                           <div className="px-3 py-2.5 border-b border-indigo-100/40 bg-indigo-50/10">
-                            <p className="text-indigo-600 text-[12px]">세트 구성 상품 ({setSelectedIds.length}개)</p>
+                            <p className="text-indigo-700 text-[12px] font-medium">세트 구성 상품 ({setSelectedIds.length}개)</p>
                           </div>
-                          <div className="h-[360px] overflow-y-auto">
+                          <div className="h-[360px] overflow-y-auto scrollbar-thin">
                             {products.filter((p) => setSelectedIds.includes(p.id)).map((p) => (
                               <button key={p.id} type="button" onClick={() => {
                                 const newIds = setSelectedIds.filter((x) => x !== p.id);
                                 setSetSelectedIds(newIds);
                               }} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-red-50/30 transition-colors cursor-pointer border-b border-indigo-100/20 last:border-0">
-                                <span className="text-gray-700 text-[13px] truncate flex-1">{p.name}</span>
-                                <span className="text-gray-400 text-[11px] shrink-0 mr-1">{formatWon(p.listPrice)}</span>
+                                <span className="text-gray-500 text-[10px] font-mono shrink-0">{p.isbn}</span>
+                                <span className="text-gray-800 text-[13px] truncate flex-1 font-medium">{p.name}</span>
+                                <span className="text-gray-500 text-[11px] shrink-0 mr-1">{formatWon(p.listPrice)}</span>
                                 <Dismiss24Regular className="w-3.5 h-3.5 text-red-400 shrink-0" />
                               </button>
                             ))}
@@ -674,8 +679,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                             )}
                           </div>
                           <div className="px-3 py-2 border-t border-indigo-100/40 bg-indigo-50/10 flex items-center justify-between shrink-0">
-                            <span className="text-indigo-400 text-[11px]">정가 총계</span>
-                            <span className="text-indigo-600 text-[12px]">{formatWon(products.filter((p) => setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0))}</span>
+                            <span className="text-indigo-500 text-[11px] font-medium">정가 총계</span>
+                            <span className="text-indigo-700 text-[12px] font-semibold">{formatWon(products.filter((p) => setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0))}</span>
                           </div>
                         </div>
                       </div>
@@ -701,7 +706,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
 
                 {/* Existing sets */}
                 <GlassPanel className="p-5 flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <h3 className="text-gray-800 flex items-center gap-2 mb-4 shrink-0">
+                  <h3 className="text-gray-900 flex items-center gap-2 mb-4 shrink-0">
                     <BoxMultiple24Regular className="text-indigo-500" />
                     등록된 세트 <span className="text-indigo-500 text-[13px]">({sets.length}건)</span>
                   </h3>
@@ -709,30 +714,30 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                     <table className="w-full text-[13px]">
                       <thead>
                         <tr className="border-b border-gray-200">
-                          <th className="text-left text-gray-500 py-2.5 px-3 font-semibold">세트명</th>
-                          <th className="text-left text-gray-400 py-2.5 px-3">세트 목록</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">정가</th>
-                          <th className="text-center text-gray-400 py-2.5 px-3 whitespace-nowrap">관리</th>
+                          <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">세트명</th>
+                          <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">세트 목록</th>
+                          <th className="text-right text-gray-600 py-2.5 px-3 font-semibold whitespace-nowrap">정가</th>
+                          <th className="text-center text-gray-600 py-2.5 px-3 font-semibold whitespace-nowrap">관리</th>
                         </tr>
                       </thead>
                       <tbody>
                         {sets.map((s, idx) => (
                           <motion.tr key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
                             className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${editingSetId === s.id ? "bg-amber-50" : ""}`}>
-                            <td className="py-3 px-3 text-gray-700 align-top whitespace-nowrap">
+                            <td className="py-3 px-3 text-gray-900 font-medium align-top whitespace-nowrap">
                               <div>
                                 <p>{s.name}</p>
-                                <p className="text-gray-400 text-[11px]">{s.items.length}개 구성</p>
+                                <p className="text-gray-500 text-[11px]">{s.items.length}개 구성</p>
                               </div>
                             </td>
                             <td className="py-3 px-3 align-top">
                               <div className="flex flex-wrap gap-1">
                                 {s.items.map((item) => (
-                                  <span key={item.id} className="rounded-lg bg-indigo-50/50 border border-indigo-100/50 px-2 py-0.5 text-[11px] text-indigo-600">{item.name}</span>
+                                  <span key={item.id} className="rounded-lg bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[11px] text-indigo-700 font-medium">{item.name}</span>
                                 ))}
                               </div>
                             </td>
-                            <td className="py-3 px-3 text-right text-gray-500 align-top whitespace-nowrap">{formatWon(s.listPrice)}</td>
+                            <td className="py-3 px-3 text-right text-gray-700 font-medium align-top whitespace-nowrap">{formatWon(s.listPrice)}</td>
                             <td className="py-3 px-3 text-center align-top">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" onClick={() => startEditSet(s)} className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-amber-500 hover:bg-amber-50/50 transition-colors cursor-pointer">
@@ -760,14 +765,14 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
               <motion.div key="list" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                 transition={{ type: "spring", damping: 30, stiffness: 260 }} className="space-y-6 flex flex-col flex-1 overflow-hidden">
                 <div className="shrink-0">
-                  <h2 className="text-gray-800">전체 상품 목록</h2>
-                  <p className="text-gray-400 text-[13px] mt-0.5">단품과 세트 상품을 모두 확인합니다. 클릭하면 상세 정보를 볼 수 있습니다.</p>
+                  <h2 className="text-gray-900">전체 상품 목록</h2>
+                  <p className="text-gray-500 text-[13px] mt-0.5">단품과 세트 상품을 모두 확인합니다. 클릭하면 상세 정보를 볼 수 있습니다.</p>
                 </div>
 
                 {/* 단품 상품 */}
                 <GlassPanel className="p-5 flex-1 min-h-[200px] flex flex-col overflow-hidden">
                   <div className="flex items-center justify-between mb-4 shrink-0">
-                    <h3 className="text-gray-800 flex items-center gap-2">
+                    <h3 className="text-gray-900 flex items-center gap-2">
                       <Box24Regular className="text-indigo-500" />
                       단품 상품 <span className="text-indigo-500 text-[13px]">({products.length}건)</span>
                     </h3>
@@ -796,10 +801,10 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               onChange={toggleAllProducts}
                               className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
                           </th>
-                          <th className="text-left text-gray-400 py-2.5 px-3">ISBN</th>
-                          <th className="text-left text-gray-400 py-2.5 px-3">상품명</th>
-                          <th className="text-left text-gray-400 py-2.5 px-3">출판사</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">정가</th>
+                          <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">ISBN</th>
+                          <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">상품명</th>
+                          <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">출판사</th>
+                          <th className="text-right text-gray-600 py-2.5 px-3 font-semibold">정가</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -811,10 +816,10 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                                 onChange={() => toggleCheckProduct(p.id)}
                                 className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
                             </td>
-                            <td className="py-2.5 px-3 font-mono text-gray-500 text-[12px]" onClick={() => setDetailProduct(p)}>{p.isbn}</td>
-                            <td className="py-2.5 px-3 text-gray-700" onClick={() => setDetailProduct(p)}>{p.name}</td>
-                            <td className="py-2.5 px-3 text-gray-500" onClick={() => setDetailProduct(p)}>{p.publisher}</td>
-                            <td className="py-2.5 px-3 text-right text-gray-500" onClick={() => setDetailProduct(p)}>{formatWon(p.listPrice)}</td>
+                            <td className="py-2.5 px-3 font-mono text-gray-700 text-[12px]" onClick={() => setDetailProduct(p)}>{p.isbn}</td>
+                            <td className="py-2.5 px-3 text-gray-900 font-medium" onClick={() => setDetailProduct(p)}>{p.name}</td>
+                            <td className="py-2.5 px-3 text-gray-700" onClick={() => setDetailProduct(p)}>{p.publisher}</td>
+                            <td className="py-2.5 px-3 text-right text-gray-700 font-medium" onClick={() => setDetailProduct(p)}>{formatWon(p.listPrice)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -825,7 +830,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                 {/* 세트 상품 */}
                 <GlassPanel className="p-5 flex-1 min-h-[200px] flex flex-col overflow-hidden">
                   <div className="flex items-center justify-between mb-4 shrink-0">
-                    <h3 className="text-gray-800 flex items-center gap-2">
+                    <h3 className="text-gray-900 flex items-center gap-2">
                       <BoxMultiple24Regular className="text-indigo-500" />
                       세트 상품 <span className="text-indigo-500 text-[13px]">({sets.length}건)</span>
                     </h3>
@@ -847,9 +852,9 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               onChange={toggleAllSets}
                               className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
                           </th>
-                          <th className="text-left text-gray-400 py-2.5 px-3">세트명</th>
-                          <th className="text-center text-gray-400 py-2.5 px-3">구성 상품수</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">정가 합계</th>
+                          <th className="text-left text-gray-600 py-2.5 px-3 font-semibold">세트명</th>
+                          <th className="text-center text-gray-600 py-2.5 px-3 font-semibold">구성 상품수</th>
+                          <th className="text-right text-gray-600 py-2.5 px-3 font-semibold">정가 합계</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -861,9 +866,9 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                                 onChange={() => toggleCheckSet(s.id)}
                                 className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
                             </td>
-                            <td className="py-2.5 px-3 text-gray-700" onClick={() => setDetailSet(s)}>{s.name}</td>
-                            <td className="py-2.5 px-3 text-center text-gray-500" onClick={() => setDetailSet(s)}>{s.items.length}개</td>
-                            <td className="py-2.5 px-3 text-right text-gray-500" onClick={() => setDetailSet(s)}>{formatWon(s.listPrice)}</td>
+                            <td className="py-2.5 px-3 text-gray-900 font-medium" onClick={() => setDetailSet(s)}>{s.name}</td>
+                            <td className="py-2.5 px-3 text-center text-gray-700" onClick={() => setDetailSet(s)}>{s.items.length}개</td>
+                            <td className="py-2.5 px-3 text-right text-gray-700 font-medium" onClick={() => setDetailSet(s)}>{formatWon(s.listPrice)}</td>
                           </tr>
                         ))}
                         {sets.length === 0 && (
@@ -889,6 +894,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                 }} />
               </motion.div>
             )}
+
           </AnimatePresence>
         </motion.div>
       </main>
@@ -914,8 +920,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                 </div>
                 <div>
                   <span className="text-indigo-500 text-[11px] px-2 py-0.5 rounded-full bg-indigo-50/50 border border-indigo-100/50">단품</span>
-                  <h3 className="text-gray-800 mt-1.5">{detailProduct.name}</h3>
-                  <p className="text-gray-500 text-[13px]">{detailProduct.publisher}</p>
+                  <h3 className="text-gray-900 mt-1.5">{detailProduct.name}</h3>
+                  <p className="text-gray-600 text-[13px]">{detailProduct.publisher}</p>
                 </div>
               </div>
               <table className="w-full text-[13px]">
@@ -925,8 +931,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                     ["정가", formatWon(detailProduct.listPrice)],
                   ] as [string, string][]).map(([label, val]) => (
                     <tr key={label} className="border-b border-gray-100/50">
-                      <td className="py-2 text-gray-400 w-[80px]">{label}</td>
-                      <td className="py-2 text-gray-700 font-mono">{val}</td>
+                      <td className="py-2 text-gray-600 w-[80px] font-medium">{label}</td>
+                      <td className="py-2 text-gray-800 font-mono">{val}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -957,12 +963,12 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
               </button>
               <div className="mb-4">
                 <span className="text-purple-500 text-[11px] px-2 py-0.5 rounded-full bg-purple-50/50 border border-purple-100/50">세트</span>
-                <h3 className="text-gray-800 mt-1.5">{detailSet.name}</h3>
+                <h3 className="text-gray-900 mt-1.5">{detailSet.name}</h3>
                 <div className="flex items-center gap-2 text-[13px] mt-1">
                   <span className="text-indigo-600 font-medium">정가 합계: {formatWon(detailSet.listPrice)}</span>
                 </div>
               </div>
-              <p className="text-gray-500 text-[12px] mb-3">구성 상품 ({detailSet.items.length}개)</p>
+              <p className="text-gray-600 text-[12px] font-medium mb-3">구성 상품 ({detailSet.items.length}개)</p>
               <div className="space-y-2.5 max-h-[320px] overflow-y-auto">
                 {detailSet.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
@@ -971,11 +977,11 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                         onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-gray-800 text-[13px] truncate">{item.name}</p>
-                      <p className="text-gray-400 text-[11px]">{item.publisher} &middot; ISBN: {item.isbn}</p>
+                      <p className="text-gray-900 text-[13px] truncate font-medium">{item.name}</p>
+                      <p className="text-gray-500 text-[11px]">{item.publisher} · ISBN: {item.isbn}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-indigo-600 text-[13px]">{formatWon(item.listPrice)}</p>
+                      <p className="text-indigo-700 text-[13px] font-semibold">{formatWon(item.listPrice)}</p>
                     </div>
                   </div>
                 ))}

@@ -70,15 +70,15 @@ export function ProductListItem({ product, quantity, onQuantityChange }: Product
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-start gap-2">
             {!isSet && (
-              <span className="text-gray-400 text-[11px] font-mono shrink-0 mt-0.5">
+              <span className="text-gray-500 text-[11px] font-mono shrink-0 mt-0.5">
                 {product.isbn}
               </span>
             )}
-            <h4 className="text-gray-800 text-[14px] leading-tight font-medium">
+            <h4 className="text-gray-900 text-[14px] leading-tight font-medium">
               {product.name}
             </h4>
           </div>
-          <p className="text-gray-400 text-[12px]">{product.publisher}</p>
+          <p className="text-gray-500 text-[12px]">{product.publisher}</p>
           <div className="flex items-center gap-2 text-[13px] pt-1">
             <span className="text-gray-600 font-medium">정가</span>
             <span className="text-indigo-600 font-semibold">
@@ -134,10 +134,10 @@ export function ProductListItem({ product, quantity, onQuantityChange }: Product
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-gray-800 text-[13px] leading-tight font-medium truncate">
+            <h4 className="text-gray-900 text-[13px] leading-tight font-medium truncate">
               {product.name}
             </h4>
-            <p className="text-gray-400 text-[10px]">{product.publisher}</p>
+            <p className="text-gray-500 text-[10px]">{product.publisher}</p>
           </div>
           <div className="shrink-0 flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
             <button

@@ -108,3 +108,17 @@ export async function deleteOrderRemote(orderNumber: string) {
     method: "DELETE",
   });
 }
+
+// ─── Settings ───
+export async function fetchSettings() {
+  const res = await request<{ data: any }>("/settings");
+  return res.data;
+}
+
+export async function saveSettingsRemote(data: Record<string, any>) {
+  const res = await request<{ ok: boolean; data: any }>("/settings", {
+    method: "PUT",
+    body: JSON.stringify({ data }),
+  });
+  return res.data;
+}

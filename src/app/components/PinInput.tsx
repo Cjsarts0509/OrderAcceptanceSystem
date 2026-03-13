@@ -1,11 +1,13 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 
 interface PinInputProps {
   value: string;
   onChange: (value: string) => void;
+  onComplete?: () => void;
+  inputId?: string;
 }
 
-export function PinInput({ value, onChange }: PinInputProps) {
+export function PinInput({ value, onChange, onComplete, inputId }: PinInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const digits = value.padEnd(4, "").split("").slice(0, 4);
 
@@ -18,6 +20,9 @@ export function PinInput({ value, onChange }: PinInputProps) {
     if (char && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
+    if (char && index === 3) {
+      onComplete?.();
+    }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -26,12 +31,25 @@ export function PinInput({ value, onChange }: PinInputProps) {
     }
   };
 
+  /** 외부에서 첫 번째 입력으로 포커스할 수 있도록 */
+  const focusFirst = () => inputRefs.current[0]?.focus();
+
+  useEffect(() => {
+    if (inputId) {
+      const el = document.getElementById(inputId);
+      if (el) {
+        (el as any).__pinFocus = focusFirst;
+      }
+    }
+  });
+
   return (
     <div className="flex items-center gap-3 justify-center">
       {[0, 1, 2, 3].map((i) => (
         <input
           key={i}
           ref={(el) => { inputRefs.current[i] = el; }}
+          id={i === 0 && inputId ? inputId : undefined}
           type="password"
           inputMode="numeric"
           maxLength={1}

@@ -94,7 +94,7 @@ export function ProductScrollSection({
                   <div className="flex-1 min-w-0 space-y-0.5">
                     {icon === "single" && (
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-400 text-[10px] font-mono shrink-0">
+                        <span className="text-gray-500 text-[10px] font-mono shrink-0">
                           {product.isbn}
                         </span>
                       </div>
@@ -157,8 +157,8 @@ export function ProductScrollSection({
                           key={item.isbn || i}
                           className="flex items-center gap-1.5 text-[10px] py-0.5 bg-gray-50 rounded px-1.5"
                         >
-                          <span className="text-gray-400 w-4 text-right shrink-0">{i + 1}.</span>
-                          <span className="text-gray-400 font-mono text-[9px] shrink-0">
+                          <span className="text-gray-500 w-4 text-right shrink-0">{i + 1}.</span>
+                          <span className="text-gray-500 font-mono text-[9px] shrink-0">
                             {item.isbn}
                           </span>
                           <span className="text-gray-800 flex-1 min-w-0 truncate text-[11px] font-medium">

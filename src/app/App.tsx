@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { toast, Toaster } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -97,6 +97,27 @@ export default function App() {
   const [viewDirection, setViewDirection] = useState(1);
   const isMobile = useIsMobile();
 
+  /* ── 자동 포커스 유틸 ── */
+  const focusNext = useCallback((nextId: string) => {
+    setTimeout(() => {
+      const el = document.getElementById(nextId);
+      if (!el) return;
+      // PinInput 전용 포커스
+      if ((el as any).__pinFocus) {
+        (el as any).__pinFocus();
+        return;
+      }
+      el.focus();
+    }, 50);
+  }, []);
+
+  const handleEnterKey = useCallback((nextId: string) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      focusNext(nextId);
+    }
+  }, [focusNext]);
+
   /* ── 주문 폼 ── */
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -173,14 +194,24 @@ export default function App() {
   }, []);
 
   const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPhone(formatPhone(e.target.value));
-  }, []);
+    const formatted = formatPhone(e.target.value);
+    setPhone(formatted);
+    // 전화번호 완성 시 자동으로 다음 필드(이메일)로 이동
+    if (formatted.length === 13) {
+      focusNext("order-email");
+    }
+  }, [focusNext]);
 
   const handleReceiptPhoneChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setReceiptNumber(formatPhone(e.target.value));
+      const formatted = formatPhone(e.target.value);
+      setReceiptNumber(formatted);
+      // 전화번호 완성 시 다음 버튼으로 포커스 이동
+      if (formatted.length === 13) {
+        focusNext("order-next-btn");
+      }
     },
-    []
+    [focusNext]
   );
 
   const navigateTo = (v: AppView) => {
@@ -364,6 +395,7 @@ export default function App() {
                   <div className="relative">
                     <Person24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                     <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="홍길동"
+                      id="order-name" onKeyDown={handleEnterKey("order-phone")}
                       className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                   </div>
                 </div>
@@ -372,14 +404,16 @@ export default function App() {
                   <div className="relative">
                     <Call24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                     <input type="tel" value={phone} onChange={handlePhoneChange} placeholder="010-1234-5678"
+                      id="order-phone" onKeyDown={handleEnterKey("order-email")}
                       className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">이메일 <span className="text-gray-400 text-[11px] font-normal">(선택 — 주문 확인 메일 발송)</span></label>
+                  <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">이메일 <span className="text-gray-500 text-[11px] font-normal">(선택 — 주문 확인 메일 발송)</span></label>
                   <div className="relative">
                     <Mail24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@email.com"
+                      id="order-email" onKeyDown={handleEnterKey("order-address-detail")}
                       className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                   </div>
                 </div>
@@ -389,7 +423,10 @@ export default function App() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">배송 주소 <span className="text-red-500">*</span></label>
-                  <AddressSearch value={address ? `[${zipCode}] ${address}` : ""} onChange={(addr, zip) => { setAddress(addr); setZipCode(zip); }} />
+                  <AddressSearch value={address ? `[${zipCode}] ${address}` : ""} onChange={(addr, zip) => { setAddress(addr); setZipCode(zip); }} onSelect={() => {
+                    // 주소 선택 완료 후 상세주소 입력으로 자동 이동
+                    setTimeout(() => focusNext("order-address-detail"), 300);
+                  }} />
                 </div>
                 <AnimatePresence>
                   {address && (
@@ -405,6 +442,7 @@ export default function App() {
                         <div>
                           <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">상세 주소</label>
                           <input type="text" value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} placeholder="동/호수, 층, 건물명 등"
+                            id="order-address-detail" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNext("order-next-btn"); } }}
                             className="w-full rounded-xl border border-gray-200 bg-white py-2.5 px-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                         </div>
                       </div>
@@ -612,9 +650,11 @@ export default function App() {
                             <Receipt24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                             {receiptType === "personal" ? (
                               <input type="tel" value={receiptNumber} onChange={handleReceiptPhoneChange} placeholder="010-0000-0000"
+                                id="order-receipt-number" onKeyDown={handleEnterKey("order-next-btn")}
                                 className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                             ) : (
                               <input type="text" value={receiptNumber} onChange={(e) => setReceiptNumber(formatBizNumber(e.target.value))} placeholder="000-00-00000"
+                                id="order-receipt-number" onKeyDown={handleEnterKey("order-next-btn")}
                                 className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                             )}
                           </div>
@@ -696,7 +736,7 @@ export default function App() {
                       <div className="space-y-1.5">
                         {visibleProducts.map((p) => (
                           <div key={p.id} className="flex items-center gap-2">
-                            <span className="text-gray-600 text-[13px] truncate min-w-0 flex-1">{p.name} <span className="text-gray-400">x{quantities[p.id] || 1}</span></span>
+                            <span className="text-gray-600 text-[13px] truncate min-w-0 flex-1">{p.name} <span className="text-gray-500">x{quantities[p.id] || 1}</span></span>
                             <span className="text-indigo-600 text-[13px] shrink-0 whitespace-nowrap">{formatWon(p.listPrice * (quantities[p.id] || 1))}</span>
                           </div>
                         ))}
@@ -768,8 +808,14 @@ export default function App() {
                     <LockClosed24Regular className="text-indigo-600 w-5 h-5" />
                     <p className="text-gray-800 text-[14px] font-semibold">주문 조회용 비밀번호 (숫자 4자리)</p>
                   </div>
-                  <PinInput value={pin} onChange={setPin} />
-                  <p className="text-gray-400 text-[11px] text-center mt-2">
+                  <PinInput value={pin} onChange={setPin} inputId="order-pin" onComplete={() => {
+                    // 비밀번호 4자리 입력 완료 시 주문 접수 버튼 포커스
+                    setTimeout(() => {
+                      const btn = document.getElementById("order-submit-btn");
+                      btn?.focus();
+                    }, 100);
+                  }} />
+                  <p className="text-gray-500 text-[11px] text-center mt-2">
                     전화번호 + 비밀번호로 주문 조회 및 취소가 가능합니다.
                   </p>
                 </div>
@@ -805,7 +851,7 @@ export default function App() {
             {email && (
               <p className="text-indigo-500 text-[12px]">주문 확인 메일이 {email}로 발송되었습니다.</p>
             )}
-            <p className="text-gray-400 text-[12px]">
+            <p className="text-gray-500 text-[12px]">
               전화번호({phone})와 비밀번호(4자리)로<br />주문 조회 및 취소가 가능합니다.
             </p>
             <button type="button" onClick={goBack}
@@ -927,12 +973,12 @@ export default function App() {
                     <ArrowLeft24Regular className="w-3.5 h-3.5" />{step === 0 ? "메인" : "이전"}
                   </button>
                   {step < TOTAL_STEPS - 1 ? (
-                    <button type="button" onClick={goNext}
+                    <button type="button" onClick={goNext} id="order-next-btn"
                       className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-white text-[13px] shadow-[0_4px_16px_rgba(79,70,229,0.3)] transition-all hover:shadow-[0_6px_24px_rgba(79,70,229,0.4)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
                       다음<ArrowRight24Regular className="w-3.5 h-3.5" />
                     </button>
                   ) : (
-                    <button type="button" onClick={handleSubmit}
+                    <button type="button" onClick={handleSubmit} id="order-submit-btn"
                       className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-white text-[13px] shadow-[0_4px_16px_rgba(5,150,105,0.3)] transition-all hover:shadow-[0_6px_24px_rgba(5,150,105,0.4)] hover:brightness-110 active:scale-[0.98] cursor-pointer">
                       <Send24Regular className="w-3.5 h-3.5" />주문 접수
                     </button>

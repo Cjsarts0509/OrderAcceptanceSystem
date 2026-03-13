@@ -137,22 +137,41 @@
     line-height: 1.5;
   }
 
+  /* 숫자/텍스트 입력 포커스 시 선택 상태 시각화 */
+  input[type="number"],
+  input[type="text"] {
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  }
+
+  input::selection,
+  textarea::selection {
+    background-color: rgba(99, 102, 241, 0.25);
+    color: #1e1b4b;
+  }
+
+  /* 모든 스크롤 영역에 부드러운 스크롤 적용 */
+  * {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* 커스텀 스크롤바 */
   .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
+    width: 5px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(79, 70, 229, 0.25);
+    background: rgba(79, 70, 229, 0.2);
     border-radius: 9999px;
+    transition: background 0.2s;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(79, 70, 229, 0.4);
+    background: rgba(79, 70, 229, 0.45);
   }
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(79, 70, 229, 0.25) transparent;
+    scrollbar-color: rgba(79, 70, 229, 0.2) transparent;
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import {
@@ -86,6 +86,24 @@ export function OrderLookup({ orders, onBack }: OrderLookupProps) {
   const [cancelTarget, setCancelTarget] = useState<{ order: OrderData; productId?: string } | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
+  const focusPinInput = useCallback(() => {
+    setTimeout(() => {
+      const el = document.getElementById("lookup-pin");
+      if (el && (el as any).__pinFocus) {
+        (el as any).__pinFocus();
+      }
+    }, 50);
+  }, []);
+
+  const handlePhoneInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setPhone(formatted);
+    // 전화번호 완성 시(13자: 010-1234-5678) 자동으로 비밀번호 입력으로 이동
+    if (formatted.length === 13) {
+      focusPinInput();
+    }
+  };
+
   const handleSearch = async () => {
     if (phone.replace(/\D/g, "").length < 10) { setError("전화번호를 정확히 입력해 주세요."); return; }
     if (pin.length < 4) { setError("비밀번호 4자리를 입력해 주세요."); return; }
@@ -160,16 +178,23 @@ export function OrderLookup({ orders, onBack }: OrderLookupProps) {
               <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">전화번호</label>
               <div className="relative">
                 <Call24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
-                <input type="tel" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} placeholder="010-1234-5678"
+                <input type="tel" value={phone} onChange={handlePhoneInput} placeholder="010-1234-5678"
+                  onKeyDown={(e) => { if (e.key === "Enter") { focusPinInput(); } }}
                   className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
               </div>
             </div>
             <div>
               <label className="block text-gray-700 text-[13px] font-semibold mb-2">비밀번호 (숫자 4자리)</label>
-              <PinInput value={pin} onChange={setPin} />
+              <PinInput value={pin} onChange={setPin} inputId="lookup-pin" onComplete={() => {
+                // 비밀번호 4자리 입력 완료 시 조회 버튼 포커스
+                setTimeout(() => {
+                  const btn = document.getElementById("lookup-search-btn");
+                  btn?.focus();
+                }, 100);
+              }} />
             </div>
             {error && <p className="text-red-600 text-[13px] font-medium text-center">{error}</p>}
-            <button type="button" onClick={handleSearch} disabled={isSearching}
+            <button type="button" onClick={handleSearch} disabled={isSearching} id="lookup-search-btn"
               className={`w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-white shadow-[0_4px_16px_rgba(5,150,105,0.3)] transition-all hover:shadow-[0_6px_24px_rgba(5,150,105,0.4)] hover:brightness-110 active:scale-[0.98] cursor-pointer ${isSearching ? "opacity-70 cursor-wait" : ""}`}>
               <Search24Regular className="w-4 h-4" /> {isSearching ? "조회 중..." : "주문 조회"}
             </button>
@@ -214,7 +239,7 @@ export function OrderLookup({ orders, onBack }: OrderLookupProps) {
                               <Box24Regular className="w-4 h-4 text-gray-500 shrink-0" />
                               <span className="text-gray-700 truncate min-w-0 flex-1 font-medium">
                                 {p.name}
-                                {(p.quantity ?? 1) > 1 && <span className="text-gray-400 ml-1">x{p.quantity}</span>}
+                                {(p.quantity ?? 1) > 1 && <span className="text-gray-500 ml-1">x{p.quantity}</span>}
                               </span>
                               <span className="text-indigo-600 shrink-0 whitespace-nowrap font-semibold">{formatWon(p.listPrice * (p.quantity ?? 1))}</span>
                               {/* 부분 취소 버튼 — 배송중 이전 & 상품 2개 이상일 때 */}
@@ -248,7 +273,7 @@ export function OrderLookup({ orders, onBack }: OrderLookupProps) {
                                 {trackingNumber} <Open24Regular className="w-3.5 h-3.5" />
                               </button>
                             </div>
-                            <span className="text-[11px] text-gray-400 shrink-0">클릭하여 조회</span>
+                            <span className="text-[11px] text-gray-500 shrink-0">클릭하여 조회</span>
                           </div>
                         )}
                         <p className="text-gray-500 text-[11px] font-medium">주문일시: {new Date(order.createdAt).toLocaleString("ko-KR")}</p>

@@ -121,7 +121,7 @@ export function MobileProductTabs({
 
                       <div className="flex-1 min-w-0 space-y-0.5">
                         {activeTab === "single" && (
-                          <span className="text-gray-400 text-[9px] font-mono">
+                          <span className="text-gray-500 text-[9px] font-mono">
                             {product.isbn}
                           </span>
                         )}
@@ -192,7 +192,7 @@ export function MobileProductTabs({
                               key={item.isbn || i}
                               className="flex items-center gap-1 text-[9px] py-0.5 bg-gray-100 rounded px-1.5"
                             >
-                              <span className="text-gray-400 w-3 text-right shrink-0">{i + 1}.</span>
+                              <span className="text-gray-500 w-3 text-right shrink-0">{i + 1}.</span>
                               <span className="text-gray-800 flex-1 min-w-0 truncate text-[10px] font-medium">
                                 {item.name}
                               </span>
