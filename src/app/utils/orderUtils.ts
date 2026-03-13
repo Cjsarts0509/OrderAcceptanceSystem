@@ -1,10 +1,11 @@
+import { calculateTotalPrice } from "./priceCalculator";
+
 export interface OrderProduct {
   id: string;
   isbn: string;
   name: string;
   publisher: string;
   listPrice: number;
-  salePrice: number;
   imageUrl: string;
   type: "single" | "set";
   setItems?: string[];
@@ -47,7 +48,7 @@ export function generateOrderNumber(): string {
 
 /**
  * 주문 데이터 생성
- * Supabase 연결 시 이 함수의 반환값을 DB에 insert
+ * 가격은 주문(장바구니) 총계 기준으로 계산
  */
 export function createOrderData(params: {
   customerName: string;
@@ -62,7 +63,11 @@ export function createOrderData(params: {
   pin: string;
 }): OrderData {
   const totalListPrice = params.products.reduce((s, p) => s + p.listPrice * p.quantity, 0);
-  const totalSalePrice = params.products.reduce((s, p) => s + p.salePrice * p.quantity, 0);
+  
+  // 주문 단위로 할인/학원지원금 계산
+  const totalPrices = calculateTotalPrice(
+    params.products.map((p) => ({ listPrice: p.listPrice, quantity: p.quantity }))
+  );
 
   return {
     orderNumber: generateOrderNumber(),
@@ -77,7 +82,7 @@ export function createOrderData(params: {
     receiptNumber: params.receiptNumber,
     pin: params.pin,
     totalListPrice,
-    totalSalePrice,
+    totalSalePrice: totalPrices.finalPrice,
     createdAt: new Date().toISOString(),
     status: "pending",
   };

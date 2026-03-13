@@ -5,6 +5,7 @@ import {
 } from "@fluentui/react-icons";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { getBookImageUrl } from "../utils/dataStore";
+import { formatWon } from "../utils/priceCalculator";
 
 export interface Product {
   id: string;
@@ -12,11 +13,10 @@ export interface Product {
   name: string;
   publisher: string;
   listPrice: number;
-  salePrice: number;
   imageUrl: string;
   type: "single" | "set";
   setItems?: string[];
-  setItemDetails?: { isbn: string; name: string; publisher: string; listPrice: number; salePrice: number }[];
+  setItemDetails?: { isbn: string; name: string; publisher: string; listPrice: number }[];
 }
 
 interface ProductCardProps {
@@ -25,35 +25,25 @@ interface ProductCardProps {
   onToggle: (id: string) => void;
 }
 
-function formatWon(n: number) {
-  return n.toLocaleString("ko-KR") + "원";
-}
-
 export function ProductCard({ product, selected, onToggle }: ProductCardProps) {
-  const discount = Math.round(
-    ((product.listPrice - product.salePrice) / product.listPrice) * 100
-  );
-
   return (
     <button
       type="button"
       onClick={() => onToggle(product.id)}
       className={`relative w-full text-left rounded-xl border transition-all duration-200 cursor-pointer ${
         selected
-          ? "border-indigo-400/60 bg-indigo-50/40 shadow-[0_4px_20px_rgba(99,102,241,0.1)]"
-          : "border-white/40 bg-white/30 hover:bg-white/50 hover:border-white/50"
+          ? "border-indigo-500 bg-indigo-50 shadow-[0_4px_20px_rgba(79,70,229,0.15)] ring-1 ring-indigo-500/20"
+          : "border-gray-200 bg-white/60 hover:bg-white/80 hover:border-gray-300"
       } backdrop-blur-md overflow-hidden`}
     >
-      {/* 체크 아이콘 */}
       <div className="absolute top-1.5 right-1.5 z-10">
         {selected ? (
-          <CheckboxChecked24Filled className="text-indigo-500 w-5 h-5" />
+          <CheckboxChecked24Filled className="text-indigo-600 w-5 h-5" />
         ) : (
           <CheckboxUnchecked24Regular className="text-gray-300 w-5 h-5" />
         )}
       </div>
 
-      {/* 이미지 */}
       <div className="relative w-full aspect-[3/4] bg-gray-100/50">
         <ImageWithFallback
           src={product.imageUrl || getBookImageUrl(product.isbn)}
@@ -65,25 +55,16 @@ export function ProductCard({ product, selected, onToggle }: ProductCardProps) {
             세트
           </span>
         )}
-        {discount > 0 && (
-          <span className="absolute bottom-1 left-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-md">
-            -{discount}%
-          </span>
-        )}
       </div>
 
-      {/* 정보 */}
       <div className="p-2 space-y-0.5">
-        <h4 className="text-gray-800 text-[12px] truncate">{product.name}</h4>
-        <p className="text-gray-400 text-[10px]">{product.publisher}</p>
+        <h4 className="text-gray-900 text-[12px] truncate font-semibold">{product.name}</h4>
+        <p className="text-gray-500 text-[10px]">{product.publisher}</p>
         <div className="flex items-baseline gap-1 mt-0.5">
-          <span className="text-indigo-600 text-[13px]">
-            {formatWon(product.salePrice)}
+          <span className="text-indigo-700 text-[13px] font-bold">
+            {formatWon(product.listPrice)}
           </span>
         </div>
-        <p className="text-gray-400 text-[10px] line-through">
-          {formatWon(product.listPrice)}
-        </p>
       </div>
     </button>
   );

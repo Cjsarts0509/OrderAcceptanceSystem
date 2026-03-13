@@ -17,8 +17,8 @@ const buttons = [
     label: "주문하기",
     desc: "새로운 주문을 접수합니다",
     icon: Cart24Regular,
-    gradient: "from-indigo-500 to-purple-500",
-    shadow: "rgba(99,102,241,0.25)",
+    gradient: "from-indigo-600 to-purple-600",
+    shadow: "rgba(79,70,229,0.3)",
     adminOnly: false,
   },
   {
@@ -26,8 +26,8 @@ const buttons = [
     label: "주문 조회",
     desc: "주문 상태를 확인합니다",
     icon: Search24Regular,
-    gradient: "from-emerald-500 to-teal-500",
-    shadow: "rgba(16,185,129,0.25)",
+    gradient: "from-emerald-600 to-teal-600",
+    shadow: "rgba(5,150,105,0.3)",
     adminOnly: false,
   },
   {
@@ -35,8 +35,8 @@ const buttons = [
     label: "관리자",
     desc: "관리자 전용 메뉴",
     icon: Settings24Regular,
-    gradient: "from-slate-600 to-slate-800",
-    shadow: "rgba(51,65,85,0.25)",
+    gradient: "from-gray-600 to-gray-800",
+    shadow: "rgba(55,65,81,0.25)",
     adminOnly: true,
   },
 ];
@@ -60,12 +60,12 @@ export function MainPage({ onNavigate, hideAdmin }: MainPageProps) {
               boxShadow: `0 6px 24px ${btn.shadow}`,
             }}
           >
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm shrink-0">
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/30 shrink-0">
               <Icon className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-white">{btn.label}</p>
-              <p className="text-white/70 text-[13px] mt-0.5">{btn.desc}</p>
+              <p className="text-white font-bold text-[16px]">{btn.label}</p>
+              <p className="text-white/80 text-[13px] mt-0.5">{btn.desc}</p>
             </div>
           </motion.button>
         );

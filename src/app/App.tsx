@@ -350,56 +350,71 @@ export default function App() {
     switch (step) {
       case 0:
         return (
-          <div className="space-y-5">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-1">
               <Person24Regular className="text-indigo-600" />
               <h3 className="text-gray-900">고객 정보</h3>
             </div>
-            <div>
-              <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">수신인 이름 <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <Person24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="홍길동"
-                  className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">연락처 <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <Call24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
-                <input type="tel" value={phone} onChange={handlePhoneChange} placeholder="010-1234-5678"
-                  className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">이메일 <span className="text-gray-400 text-[11px] font-normal">(선택 — 입력 시 주문 확인 메일 발송)</span></label>
-              <div className="relative">
-                <Mail24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@email.com"
-                  className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">배송 주소 <span className="text-red-500">*</span></label>
-              <AddressSearch value={address ? `[${zipCode}] ${address}` : ""} onChange={(addr, zip) => { setAddress(addr); setZipCode(zip); }} />
-            </div>
-            <AnimatePresence>
-              {address && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={springTransition}>
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">우편번호</label>
-                    <div className="relative">
-                      <Location24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
-                      <input type="text" value={zipCode} readOnly className="w-full rounded-xl border border-gray-200 bg-gray-50 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-600 outline-none cursor-default" />
-                    </div>
+
+            <div className={`${!isMobile ? "grid grid-cols-2 gap-5 items-start" : "space-y-5"}`}>
+              {/* 좌측: 수신인 이름, 연락처, 이메일 */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">수신인 이름 <span className="text-red-500">*</span></label>
+                  <div className="relative">
+                    <Person24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="홍길동"
+                      className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                   </div>
-                  <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">상세 주소</label>
-                  <input type="text" value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} placeholder="동/호수, 층, 건물명 등"
-                    className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 px-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <div className="rounded-xl border border-indigo-300 bg-indigo-50 backdrop-blur-sm p-3">
+                </div>
+                <div>
+                  <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">연락처 <span className="text-red-500">*</span></label>
+                  <div className="relative">
+                    <Call24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                    <input type="tel" value={phone} onChange={handlePhoneChange} placeholder="010-1234-5678"
+                      className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">이메일 <span className="text-gray-400 text-[11px] font-normal">(선택 — 주문 확인 메일 발송)</span></label>
+                  <div className="relative">
+                    <Mail24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@email.com"
+                      className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 우측: 배송 주소, 우편번호, 상세 주소 */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">배송 주소 <span className="text-red-500">*</span></label>
+                  <AddressSearch value={address ? `[${zipCode}] ${address}` : ""} onChange={(addr, zip) => { setAddress(addr); setZipCode(zip); }} />
+                </div>
+                <AnimatePresence>
+                  {address && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={springTransition}>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">우편번호</label>
+                          <div className="relative">
+                            <Location24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                            <input type="text" value={zipCode} readOnly className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-gray-600 outline-none cursor-default" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-gray-700 text-[13px] font-semibold mb-1.5">상세 주소</label>
+                          <input type="text" value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} placeholder="동/호수, 층, 건물명 등"
+                            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 px-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-indigo-300 bg-indigo-50 p-3">
               <p className="text-indigo-700 text-[11px] font-medium">
                 * 배송은 우체국 택배(기업계약)를 통해 발송됩니다. 정확한 주소와 연락처를 입력해 주세요.
               </p>
@@ -508,22 +523,22 @@ export default function App() {
 
                 {/* 카드 결제 시: 결제금액 좌측에 표시 */}
                 {paymentMethod === "card" && (
-                  <div className="rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm p-4 space-y-1">
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-1">
                     <div className="flex justify-between text-[13px]">
-                      <span className="text-gray-500">정가 합계</span>
+                      <span className="text-gray-600 font-medium">정가 합계</span>
                       <span className="text-gray-500 line-through">{formatWon(totalPrices.listPrice)}</span>
                     </div>
                     <div className="flex justify-between text-[13px]">
-                      <span className="text-gray-500">할인</span>
-                      <span className="text-red-500">-{formatWon(totalPrices.discountAmount)}</span>
+                      <span className="text-gray-600 font-medium">할인</span>
+                      <span className="text-red-600 font-semibold">-{formatWon(totalPrices.discountAmount)}</span>
                     </div>
                     <div className="flex justify-between text-[13px]">
-                      <span className="text-gray-500">학원지원금</span>
-                      <span className="text-emerald-600">-{formatWon(totalPrices.schoolSupport)}</span>
+                      <span className="text-gray-600 font-medium">학원지원금</span>
+                      <span className="text-emerald-600 font-semibold">-{formatWon(totalPrices.schoolSupport)}</span>
                     </div>
-                    <div className="flex justify-between pt-2 border-t border-white/30">
-                      <span className="text-gray-700">결제 금액</span>
-                      <span className="text-indigo-600 font-medium">{formatWon(totalPrices.finalPrice)}</span>
+                    <div className="flex justify-between pt-2 border-t border-gray-200">
+                      <span className="text-gray-800 font-bold">결제 금액</span>
+                      <span className="text-indigo-700 font-bold">{formatWon(totalPrices.finalPrice)}</span>
                     </div>
                   </div>
                 )}
@@ -533,20 +548,20 @@ export default function App() {
                   {paymentMethod === "bank" && (
                     <motion.div key="bank-account" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }} transition={springTransition} className="overflow-hidden">
-                      <div className="rounded-xl border border-indigo-200/40 bg-indigo-50/30 backdrop-blur-sm p-4 text-center space-y-1.5">
-                        <BuildingBank24Regular className="w-6 h-6 text-indigo-500 mx-auto" />
-                        <p className="text-indigo-600">{BANK_INFO.bank}</p>
+                      <div className="rounded-xl border border-indigo-300 bg-indigo-50 p-4 text-center space-y-1.5">
+                        <BuildingBank24Regular className="w-6 h-6 text-indigo-600 mx-auto" />
+                        <p className="text-indigo-700 font-bold">{BANK_INFO.bank}</p>
                         <button type="button" onClick={() => {
                           const text = BANK_INFO.account.replace(/-/g, "");
                           const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
                           document.body.appendChild(ta); ta.select();
                           try { document.execCommand("copy"); toast.success("계좌번호가 복사되었습니다."); } catch { toast.info(`계좌번호: ${text}`); }
                           document.body.removeChild(ta);
-                        }} className="inline-flex items-center gap-1.5 text-gray-700 font-mono tracking-wider text-[16px] hover:text-indigo-600 transition-colors cursor-pointer">
+                        }} className="inline-flex items-center gap-1.5 text-gray-900 font-mono font-bold tracking-wider text-[16px] hover:text-indigo-600 transition-colors cursor-pointer">
                           {BANK_INFO.account}
-                          <Copy24Regular className="w-4 h-4 text-gray-400" />
+                          <Copy24Regular className="w-4 h-4 text-gray-500" />
                         </button>
-                        <p className="text-gray-500 text-[13px]">예금주: {BANK_INFO.holder}</p>
+                        <p className="text-gray-600 text-[13px] font-medium">예금주: {BANK_INFO.holder}</p>
                       </div>
                     </motion.div>
                   )}
@@ -597,31 +612,31 @@ export default function App() {
                             <Receipt24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                             {receiptType === "personal" ? (
                               <input type="tel" value={receiptNumber} onChange={handleReceiptPhoneChange} placeholder="010-0000-0000"
-                                className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
+                                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                             ) : (
                               <input type="text" value={receiptNumber} onChange={(e) => setReceiptNumber(formatBizNumber(e.target.value))} placeholder="000-00-00000"
-                                className="w-full rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
+                                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25" />
                             )}
                           </div>
                         </div>
                       )}
                     </div>
-                    <div className="rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm p-4 space-y-1">
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-1">
                       <div className="flex justify-between text-[13px]">
-                        <span className="text-gray-500">정가 합계</span>
+                        <span className="text-gray-600 font-medium">정가 합계</span>
                         <span className="text-gray-500 line-through">{formatWon(totalPrices.listPrice)}</span>
                       </div>
                       <div className="flex justify-between text-[13px]">
-                        <span className="text-gray-500">할인</span>
-                        <span className="text-red-500">-{formatWon(totalPrices.discountAmount)}</span>
+                        <span className="text-gray-600 font-medium">할인</span>
+                        <span className="text-red-600 font-semibold">-{formatWon(totalPrices.discountAmount)}</span>
                       </div>
                       <div className="flex justify-between text-[13px]">
-                        <span className="text-gray-500">학원지원금</span>
-                        <span className="text-emerald-600">-{formatWon(totalPrices.schoolSupport)}</span>
+                        <span className="text-gray-600 font-medium">학원지원금</span>
+                        <span className="text-emerald-600 font-semibold">-{formatWon(totalPrices.schoolSupport)}</span>
                       </div>
-                      <div className="flex justify-between pt-2 border-t border-white/30">
-                        <span className="text-gray-700">결제 금액</span>
-                        <span className="text-indigo-600 font-medium">{formatWon(totalPrices.finalPrice)}</span>
+                      <div className="flex justify-between pt-2 border-t border-gray-200">
+                        <span className="text-gray-800 font-bold">결제 금액</span>
+                        <span className="text-indigo-700 font-bold">{formatWon(totalPrices.finalPrice)}</span>
                       </div>
                     </div>
                   </motion.div>
@@ -660,23 +675,23 @@ export default function App() {
                       <td className="px-4 py-2.5 text-gray-800 font-medium">{phone || <span className="text-red-500 font-medium">미입력</span>}</td>
                     </tr>
                     {email && (
-                      <tr className="border-b border-white/30">
-                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">이메일</td>
-                        <td className="px-4 py-2.5 text-gray-700">{email}</td>
+                      <tr className="border-b border-gray-100">
+                        <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">이메일</td>
+                        <td className="px-4 py-2.5 text-gray-800">{email}</td>
                       </tr>
                     )}
                     <tr>
-                      <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap align-top">배송주소</td>
-                      <td className="px-4 py-2.5 text-gray-700">
-                        {address ? (<>[{zipCode}] {address}{addressDetail && <><br />{addressDetail}</>}</>) : <span className="text-red-500">미입력</span>}
+                      <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap align-top">배송주소</td>
+                      <td className="px-4 py-2.5 text-gray-800">
+                        {address ? (<>[{zipCode}] {address}{addressDetail && <><br />{addressDetail}</>}</>) : <span className="text-red-500 font-medium">미입력</span>}
                       </td>
                     </tr>
                   </tbody>
                 </table>
                 {/* 선택 상품 — flex-1로 남은 공간 채움 */}
-                <div className="flex-1 flex flex-col border-t border-white/30 bg-white/10">
+                <div className="flex-1 flex flex-col border-t border-gray-100">
                   <div className="flex-1 px-4 py-2.5">
-                    <p className="text-gray-400 text-[12px] mb-2">선택 상품</p>
+                    <p className="text-gray-500 text-[12px] font-medium mb-2">선택 상품</p>
                     {selectedProductData.length > 0 ? (
                       <div className="space-y-1.5">
                         {visibleProducts.map((p) => (
@@ -696,36 +711,36 @@ export default function App() {
                   </div>
                 </div>
                 {/* 총 수량 — 하단 고정 */}
-                <div className="border-t border-white/30 mt-auto bg-white/10">
+                <div className="border-t border-gray-100 mt-auto">
                   <div className="flex items-center px-4 py-2.5 text-[13px]">
-                    <span className="text-gray-400 w-[90px] shrink-0">총 수량</span>
-                    <span className="text-gray-700 font-medium">{selectedCount}종 / {totalQuantity}개</span>
+                    <span className="text-gray-500 font-medium w-[90px] shrink-0">총 수량</span>
+                    <span className="text-gray-800 font-bold">{selectedCount}종 / {totalQuantity}개</span>
                   </div>
                 </div>
               </div>
 
               {/* 우측: 결제 금액 ~ 비밀번호 */}
               <div className="flex flex-col gap-4">
-                <div className="rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm overflow-hidden flex-1">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex-1">
                   <table className="w-full text-[13px]">
                     <tbody>
-                      <tr className="border-b border-white/30">
-                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap w-[90px]">결제 금액</td>
-                        <td className="px-4 py-2.5 text-indigo-600 font-semibold text-[15px]">{formatWon(totalPrices.finalPrice)}</td>
+                      <tr className="border-b border-gray-100">
+                        <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap w-[90px]">결제 금액</td>
+                        <td className="px-4 py-2.5 text-indigo-700 font-bold text-[15px]">{formatWon(totalPrices.finalPrice)}</td>
                       </tr>
-                      <tr className="border-b border-white/30">
-                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">결제 수단</td>
-                        <td className="px-4 py-2.5 text-gray-700">{paymentMethod === "card" ? "카드 결제" : "계좌 이체"}</td>
+                      <tr className="border-b border-gray-100">
+                        <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">결제 수단</td>
+                        <td className="px-4 py-2.5 text-gray-800 font-medium">{paymentMethod === "card" ? "카드 결제" : "계좌 이체"}</td>
                       </tr>
                       {paymentMethod === "bank" && (
                         <>
-                          <tr className="border-b border-white/30">
-                            <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">입금 계좌</td>
-                            <td className="px-4 py-2.5 text-gray-700">{BANK_INFO.bank} {BANK_INFO.account}</td>
+                          <tr className="border-b border-gray-100">
+                            <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">입금 계좌</td>
+                            <td className="px-4 py-2.5 text-gray-800 font-medium">{BANK_INFO.bank} {BANK_INFO.account}</td>
                           </tr>
-                          <tr className="border-b border-white/30">
-                            <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">현금영수증</td>
-                            <td className="px-4 py-2.5 text-gray-700">
+                          <tr className="border-b border-gray-100">
+                            <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">현금영수증</td>
+                            <td className="px-4 py-2.5 text-gray-800 font-medium">
                               {receiptType === "none" && "미발급"}
                               {receiptType === "personal" && `개인 (소득공제) / ${receiptNumber || "미입력"}`}
                               {receiptType === "business" && `사업자 (지출증빙) / ${receiptNumber || "미입력"}`}
@@ -733,25 +748,25 @@ export default function App() {
                           </tr>
                         </>
                       )}
-                      <tr className="border-b border-white/30">
-                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">정가 합계</td>
+                      <tr className="border-b border-gray-100">
+                        <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">정가 합계</td>
                         <td className="px-4 py-2.5 text-gray-500 line-through">{formatWon(totalPrices.listPrice)}</td>
                       </tr>
-                      <tr className="border-b border-white/30">
-                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">할인</td>
-                        <td className="px-4 py-2.5 text-red-500">-{formatWon(totalPrices.discountAmount)}</td>
+                      <tr className="border-b border-gray-100">
+                        <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">할인</td>
+                        <td className="px-4 py-2.5 text-red-600 font-semibold">-{formatWon(totalPrices.discountAmount)}</td>
                       </tr>
                       <tr>
-                        <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">학원지원금</td>
-                        <td className="px-4 py-2.5 text-emerald-600">-{formatWon(totalPrices.schoolSupport)}</td>
+                        <td className="px-4 py-2.5 text-gray-500 font-medium whitespace-nowrap">학원지원금</td>
+                        <td className="px-4 py-2.5 text-emerald-600 font-semibold">-{formatWon(totalPrices.schoolSupport)}</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-                <div className="rounded-xl border border-indigo-200/40 bg-indigo-50/30 backdrop-blur-sm p-4">
+                <div className="rounded-xl border border-indigo-300 bg-indigo-50 p-4">
                   <div className="flex items-center gap-2 mb-3 justify-center">
-                    <LockClosed24Regular className="text-indigo-500 w-5 h-5" />
-                    <p className="text-gray-700 text-[14px]">주문 조회용 비밀번호 (숫자 4자리)</p>
+                    <LockClosed24Regular className="text-indigo-600 w-5 h-5" />
+                    <p className="text-gray-800 text-[14px] font-semibold">주문 조회용 비밀번호 (숫자 4자리)</p>
                   </div>
                   <PinInput value={pin} onChange={setPin} />
                   <p className="text-gray-400 text-[11px] text-center mt-2">
@@ -769,22 +784,22 @@ export default function App() {
           <div className="text-center py-4 space-y-5">
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
               transition={{ type: "spring", damping: 15, stiffness: 300, delay: 0.1 }}
-              className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100/60">
-              <CheckmarkCircle24Filled className="text-emerald-500 w-10 h-10" />
+              className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100">
+              <CheckmarkCircle24Filled className="text-emerald-600 w-10 h-10" />
             </motion.div>
             <div>
-              <h3 className="text-gray-800 mb-1">주문이 접수되었습니다!</h3>
-              <p className="text-gray-500 text-[14px]">아래 주문번호를 확인해 주세요.</p>
+              <h3 className="text-gray-900 mb-1">주문이 접수되었습니다!</h3>
+              <p className="text-gray-600 text-[14px]">아래 주문번호를 확인해 주세요.</p>
             </div>
             {orderResult && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25, ...springTransition }}
-                className="rounded-xl border border-emerald-200/60 bg-emerald-50/30 backdrop-blur-sm p-4 space-y-2 text-left">
-                <div className="flex justify-between text-[14px]"><span className="text-gray-500">주문번호</span><span className="text-gray-800 font-mono">{orderResult.orderNumber}</span></div>
-                <div className="flex justify-between text-[14px]"><span className="text-gray-500">주문자</span><span className="text-gray-700">{orderResult.customerName}</span></div>
-                <div className="flex justify-between text-[14px]"><span className="text-gray-500">결제 금액</span><span className="text-indigo-600">{formatWon(orderResult.totalSalePrice)}</span></div>
-                <div className="flex justify-between text-[14px]"><span className="text-gray-500">결제 수단</span><span className="text-gray-700">{orderResult.paymentMethod === "card" ? "카드 결제" : "계좌 이체"}</span></div>
-                <div className="flex justify-between text-[14px]"><span className="text-gray-500">상태</span><span className="text-emerald-600">접수 완료</span></div>
+                className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 space-y-2 text-left">
+                <div className="flex justify-between text-[14px]"><span className="text-gray-600 font-medium">주문번호</span><span className="text-gray-900 font-mono font-bold">{orderResult.orderNumber}</span></div>
+                <div className="flex justify-between text-[14px]"><span className="text-gray-600 font-medium">주문자</span><span className="text-gray-800 font-medium">{orderResult.customerName}</span></div>
+                <div className="flex justify-between text-[14px]"><span className="text-gray-600 font-medium">결제 금액</span><span className="text-indigo-700 font-bold">{formatWon(orderResult.totalSalePrice)}</span></div>
+                <div className="flex justify-between text-[14px]"><span className="text-gray-600 font-medium">결제 수단</span><span className="text-gray-800 font-medium">{orderResult.paymentMethod === "card" ? "카드 결제" : "계좌 이체"}</span></div>
+                <div className="flex justify-between text-[14px]"><span className="text-gray-600 font-medium">상태</span><span className="text-emerald-700 font-bold">접수 완료</span></div>
               </motion.div>
             )}
             {email && (
@@ -794,7 +809,7 @@ export default function App() {
               전화번호({phone})와 비밀번호(4자리)로<br />주문 조회 및 취소가 가능합니다.
             </p>
             <button type="button" onClick={goBack}
-              className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-white/40 bg-white/20 py-2.5 text-gray-500 text-[14px] hover:bg-white/40 transition-colors cursor-pointer mt-2">
+              className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white py-2.5 text-gray-700 text-[14px] hover:bg-gray-50 transition-colors cursor-pointer mt-2">
               <ArrowLeft24Regular className="w-4 h-4" />메인으로 돌아가기
             </button>
           </div>
@@ -858,7 +873,7 @@ export default function App() {
           isMobile ? (
             <div className="mb-4 shrink-0 flex items-center justify-center gap-2">
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className={`h-2 rounded-full transition-all duration-300 ${i === step ? "w-6 bg-indigo-500" : i < step ? "w-2 bg-indigo-400" : "w-2 bg-gray-200"}`} />
+                <div key={i} className={`h-2 rounded-full transition-all duration-300 ${i === step ? "w-6 bg-indigo-600" : i < step ? "w-2 bg-indigo-500" : "w-2 bg-gray-200"}`} />
               ))}
               <span className="ml-2 text-gray-400 text-[12px]">{step + 1} / {TOTAL_STEPS}</span>
             </div>
@@ -871,7 +886,7 @@ export default function App() {
 
         {/* Main Panel */}
         <motion.div layout="position" transition={springTransition}
-          className={`w-full ${view === "order" && !isMobile && (step === 1 || step === 2 || step === 3) ? (step === 1 ? "max-w-[1200px]" : "max-w-3xl") : "max-w-lg"} origin-top transition-[max-width] duration-500`}>
+          className={`w-full ${view === "order" && !isMobile && (step === 0 || step === 1 || step === 2 || step === 3) ? (step === 1 ? "max-w-[1200px]" : "max-w-3xl") : "max-w-lg"} origin-top transition-[max-width] duration-500`}>
           <GlassPanel className={`p-5 sm:p-6 ${step === 1 && view === "order" ? "flex flex-col h-[calc(100vh-200px)] min-h-[500px] max-h-[800px]" : "overflow-hidden"}`}>
             <AnimatePresence mode="wait" custom={view === "order" ? direction : viewDirection}>
               {view === "main" && (
@@ -928,7 +943,7 @@ export default function App() {
           </GlassPanel>
         </motion.div>
 
-        <p className="mt-4 text-gray-400 text-[11px]">주문 정보는 안전하게 처리됩니다.</p>
+        <p className="mt-4 text-gray-500 text-[11px] font-medium">주문 정보는 안전하게 처리됩니다.</p>
       </div>
     </div>
   );

@@ -42,7 +42,7 @@ import {
   type SetProduct as StoreSetProduct,
   type ResolvedSetProduct,
 } from "../utils/dataStore";
-import { calculatePrice, formatWon as formatWonUtil } from "../utils/priceCalculator";
+import { formatWon as formatWonUtil } from "../utils/priceCalculator";
 
 /* ───── Types (UI-level) ───── */
 type SidebarTab = "products" | "sets" | "list" | "orders";
@@ -51,18 +51,14 @@ function formatWon(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
 
-const MAX_DISCOUNT = 10;
-const inputClass = "w-full rounded-lg border border-white/40 bg-white/40 backdrop-blur-sm py-2 px-3 text-gray-700 text-[14px] placeholder:text-gray-400 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200/40 transition-all";
+const inputClass = "w-full rounded-lg border border-gray-200 bg-white py-2 px-3 text-gray-900 text-[14px] placeholder:text-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 transition-all";
 
 /* ───── Excel Helpers (XLSX) ───── */
 function exportProductsToExcel(products: RegisteredProduct[]) {
-  const headers = ["ISBN", "상품명", "출판사", "정가", "할인가(10%)", "학원지원금", "최종판매가"];
-  const rows = products.map((p) => {
-    const prices = calculatePrice(p.listPrice);
-    return [p.isbn, p.name, p.publisher, p.listPrice, prices.discountedPrice, prices.schoolSupport, prices.finalPrice];
-  });
+  const headers = ["ISBN", "상품명", "출판사", "정가"];
+  const rows = products.map((p) => [p.isbn, p.name, p.publisher, p.listPrice]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws["!cols"] = [{ wch: 16 }, { wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+  ws["!cols"] = [{ wch: 16 }, { wch: 30 }, { wch: 14 }, { wch: 10 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "상품목록");
   XLSX.writeFile(wb, `단품상품목록_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -104,20 +100,20 @@ function ConfirmDialog({ open, title, message, onConfirm, onCancel }: {
   if (!open) return null;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: "spring", damping: 30, stiffness: 260 }}
-        className="rounded-2xl border border-white/30 bg-white/80 backdrop-blur-xl shadow-[0_16px_64px_rgba(0,0,0,0.15)] p-6 w-full max-w-sm mx-4">
+        className="rounded-2xl border border-gray-200 bg-white shadow-[0_16px_64px_rgba(0,0,0,0.15)] p-6 w-full max-w-sm mx-4">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-red-100/60 flex items-center justify-center shrink-0">
-            <Warning24Regular className="w-5 h-5 text-red-500" />
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+            <Warning24Regular className="w-5 h-5 text-red-600" />
           </div>
-          <h3 className="text-gray-800">{title}</h3>
+          <h3 className="text-gray-900">{title}</h3>
         </div>
-        <p className="text-gray-500 text-[13px] mb-5 pl-[52px]">{message}</p>
+        <p className="text-gray-600 text-[13px] mb-5 pl-[52px]">{message}</p>
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onCancel}
-            className="px-4 py-2 rounded-xl border border-white/40 bg-white/40 text-gray-600 text-[13px] hover:bg-white/60 transition-colors cursor-pointer">취소</button>
+            className="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 text-[13px] hover:bg-gray-50 transition-colors cursor-pointer">취소</button>
           <button type="button" onClick={onConfirm}
             className="px-4 py-2 rounded-xl bg-red-500 text-white text-[13px] hover:bg-red-600 transition-colors cursor-pointer">삭제</button>
         </div>
@@ -219,12 +215,11 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
     if (!formName.trim()) { toast.error("상품명을 입력해 주세요."); return; }
     if (!formListPrice) { toast.error("정가를 입력해 주세요."); return; }
     const lp = Number(formListPrice);
-    const prices = calculatePrice(lp);
 
     if (editingProductId) {
       const newProducts = products.map((p) =>
         p.id === editingProductId
-          ? { ...p, isbn: formIsbn, name: formName, publisher: formPublisher, listPrice: lp, discountRate: 10, salePrice: prices.finalPrice, imageUrl: "" }
+          ? { ...p, isbn: formIsbn, name: formName, publisher: formPublisher, listPrice: lp, discountRate: 10, salePrice: lp, imageUrl: "" }
           : p
       );
       persistProducts(newProducts);
@@ -232,7 +227,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
     } else {
       const newProduct: RegisteredProduct = {
         id: `rp-${Date.now()}`, isbn: formIsbn, name: formName, publisher: formPublisher,
-        listPrice: lp, discountRate: 10, salePrice: prices.finalPrice,
+        listPrice: lp, discountRate: 10, salePrice: lp,
         imageUrl: "", type: "single",
       };
       persistProducts([...products, newProduct]);
@@ -276,16 +271,15 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
     if (setSelectedIds.length < 2) { toast.error("최소 2개의 상품을 선택해 주세요."); return; }
     const items = products.filter((p) => setSelectedIds.includes(p.id));
     const totalList = items.reduce((s, p) => s + p.listPrice, 0);
-    const prices = calculatePrice(totalList);
 
     if (editingSetId) {
       const newSets = sets.map((s) =>
-        s.id === editingSetId ? { ...s, name: setName, items, listPrice: totalList, discountRate: 10, salePrice: prices.finalPrice } : s
+        s.id === editingSetId ? { ...s, name: setName, items, listPrice: totalList, discountRate: 10, salePrice: totalList } : s
       );
       persistSets(newSets);
       toast.success("세트가 수정되었습니다.");
     } else {
-      const newSet: ResolvedSetProduct = { id: `set-${Date.now()}`, name: setName, items, listPrice: totalList, discountRate: 10, salePrice: prices.finalPrice };
+      const newSet: ResolvedSetProduct = { id: `set-${Date.now()}`, name: setName, items, listPrice: totalList, discountRate: 10, salePrice: totalList };
       persistSets([...sets, newSet]);
       toast.success("세트 상품이 생성되었습니다.");
     }
@@ -321,7 +315,6 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
         const [isbn, name, publisher, listPriceStr] = row;
         if (!isbn || !name) continue;
         const lp = Number(listPriceStr) || 0;
-        const prices = calculatePrice(lp);
         newProducts.push({
           id: `rp-imp-${Date.now()}-${count}`,
           isbn: isbn.replace(/\D/g, ""),
@@ -329,7 +322,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
           publisher: publisher || "",
           listPrice: lp,
           discountRate: 10,
-          salePrice: prices.finalPrice,
+          salePrice: lp,
           imageUrl: "",
           type: "single",
         });
@@ -389,15 +382,15 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
         initial={{ x: -280, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ type: "spring", damping: 30, stiffness: 260 }}
-        className="w-[220px] shrink-0 flex flex-col border-r border-white/30 bg-white/40 backdrop-blur-xl"
+        className="w-[220px] shrink-0 flex flex-col border-r border-gray-200 bg-gray-50"
       >
-        <div className="p-5 border-b border-white/20">
+        <div className="p-5 border-b border-gray-200">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
               <Settings24Regular className="w-5 h-5 text-indigo-500" />
             </div>
             <div>
-              <p className="text-gray-800 text-[14px]">관리자</p>
+              <p className="text-gray-700 text-[14px]">관리자</p>
               <p className="text-gray-400 text-[11px]">대시보드</p>
             </div>
           </div>
@@ -406,7 +399,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
         {/* Tree Nav */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           <button type="button" onClick={() => setTreeOpen(!treeOpen)}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] text-gray-700 hover:bg-white/40 transition-all cursor-pointer">
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] text-gray-600 hover:bg-gray-100 transition-all cursor-pointer">
             {treeOpen ? <ChevronDown24Regular className="w-4 h-4 text-gray-400" /> : <ChevronRight24Regular className="w-4 h-4 text-gray-400" />}
             <Box24Regular className="w-4.5 h-4.5 text-indigo-500" />
             상품 관리
@@ -421,7 +414,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                     return (
                       <button key={item.key} type="button" onClick={() => setActiveTab(item.key)}
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-all cursor-pointer ${
-                          active ? "bg-indigo-500/10 text-indigo-600 border border-indigo-200/40" : "text-gray-500 hover:bg-white/40 hover:text-gray-700 border border-transparent"
+                          active ? "bg-indigo-100 text-indigo-700 border border-indigo-300" : "text-gray-600 hover:bg-gray-100 hover:text-gray-800 border border-transparent"
                         }`}>
                         <Icon className="w-4.5 h-4.5" />
                         {item.label}
@@ -436,16 +429,16 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
           {/* 주문 관리 */}
           <button type="button" onClick={() => setActiveTab("orders")}
             className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-all cursor-pointer mt-1 ${
-              activeTab === "orders" ? "bg-indigo-500/10 text-indigo-600 border border-indigo-200/40" : "text-gray-700 hover:bg-white/40 border border-transparent"
+              activeTab === "orders" ? "bg-indigo-100 text-indigo-700 border border-indigo-300" : "text-gray-600 hover:bg-gray-100 border border-transparent"
             }`}>
             <ClipboardTextLtr24Regular className="w-4.5 h-4.5 text-indigo-500" />
             주문 관리
           </button>
         </nav>
 
-        <div className="p-3 border-t border-white/20">
+        <div className="p-3 border-t border-gray-200">
           <button type="button" onClick={onBack}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-white/40 hover:text-gray-700 text-[13px] transition-all cursor-pointer">
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-800 text-[13px] transition-all cursor-pointer">
             <Home24Regular className="w-5 h-5" />
             메인으로
           </button>
@@ -456,7 +449,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
       <main className="flex-1 overflow-hidden p-6 flex flex-col">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 260, delay: 0.1 }}
-          className="max-w-5xl mx-auto flex-1 overflow-hidden flex flex-col w-full">
+          className="max-w-7xl mx-auto flex-1 overflow-hidden flex flex-col w-full">
           <AnimatePresence mode="wait">
             {/* ════════════════ 단품 관리 ════════════════ */}
             {activeTab === "products" && (
@@ -464,7 +457,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                 transition={{ type: "spring", damping: 30, stiffness: 260 }} className="space-y-6 flex flex-col flex-1 overflow-hidden">
                 <div className="shrink-0">
                   <h2 className="text-gray-800">단품 상품 관리</h2>
-                  <p className="text-gray-400 text-[13px] mt-0.5">ISBN으로 도서를 검색하고 상품을 등록하세요.</p>
+                  <p className="text-gray-500 text-[13px] mt-0.5">ISBN으로 도서를 검색하고 상품을 등록하세요.</p>
                 </div>
 
                 {/* 상품 등록/수정 폼 */}
@@ -478,7 +471,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                   </h3>
                   <div className="flex gap-5">
                     {/* Image Preview */}
-                    <div className="w-[130px] h-[180px] shrink-0 rounded-xl border-2 border-dashed border-gray-200/60 bg-white/30 flex flex-col items-center justify-center gap-2 overflow-hidden">
+                    <div className="w-[130px] h-[180px] shrink-0 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 overflow-hidden">
                       {formIsbn.length === 13 ? (
                         <img src={getBookImageUrl(formIsbn)} alt="도서 표지" className="w-full h-full object-cover rounded-xl"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }}
@@ -509,29 +502,9 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                         <label className="block text-gray-500 text-[12px] mb-1">정가</label>
                         <input type="number" value={formListPrice} onChange={(e) => handleListPriceChange(e.target.value)} placeholder="0" className={inputClass} />
                       </div>
-                      {Number(formListPrice) > 0 && (() => {
-                        const p = calculatePrice(Number(formListPrice));
-                        return (
-                          <div className="col-span-1 rounded-lg border border-indigo-100/50 bg-indigo-50/20 p-2.5 space-y-1">
-                            <p className="text-[11px] text-indigo-500 font-medium mb-1">자동 계산 (할인율 10% 고정)</p>
-                            <div className="flex justify-between text-[11px]">
-                              <span className="text-gray-500">할인금액</span>
-                              <span className="text-red-500">-{formatWon(p.listPrice - p.discountedPrice)}</span>
-                            </div>
-                            <div className="flex justify-between text-[11px]">
-                              <span className="text-gray-500">학원지원금</span>
-                              <span className="text-emerald-600">-{formatWon(p.schoolSupport)}</span>
-                            </div>
-                            <div className="flex justify-between text-[12px] pt-1 border-t border-indigo-100/40">
-                              <span className="text-gray-600 font-medium">최종판매가</span>
-                              <span className="text-indigo-600 font-bold">{formatWon(p.finalPrice)}</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
                       <div className="col-span-2 flex justify-end pt-1">
                         <button type="button" onClick={handleSaveProduct}
-                          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2.5 text-white text-[14px] shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">
+                          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-5 py-2.5 text-white text-[14px] shadow-[0_4px_16px_rgba(56,189,248,0.25)] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">
                           <Save24Regular className="w-4 h-4" />
                           {editingProductId ? "수정 저장" : "상품 저장"}
                         </button>
@@ -547,7 +520,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                     <span className="text-gray-600 text-[13px]">엑셀(XLSX/XLS/CSV) 일괄 등록 — ISBN, 상품명, 출판사, 정가</span>
                     <div className="flex gap-2 ml-auto">
                       <button type="button" onClick={downloadExcelTemplate}
-                        className="flex items-center gap-1.5 rounded-lg border border-white/40 bg-white/30 px-3 py-1.5 text-gray-600 text-[12px] hover:bg-white/50 transition-colors cursor-pointer">
+                        className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-gray-700 text-[12px] hover:bg-gray-50 transition-colors cursor-pointer">
                         <ArrowDownload24Regular className="w-3.5 h-3.5" />
                         양식 다운로드
                       </button>
@@ -570,30 +543,22 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                   <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
                     <table className="w-full text-[13px]">
                       <thead>
-                        <tr className="border-b border-white/30">
-                          <th className="text-left text-gray-400 py-2.5 px-3">ISBN</th>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left text-gray-500 py-2.5 px-3 font-semibold">ISBN</th>
                           <th className="text-left text-gray-400 py-2.5 px-3">상품명</th>
                           <th className="text-left text-gray-400 py-2.5 px-3">출판사</th>
                           <th className="text-right text-gray-400 py-2.5 px-3">정가</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">할인금액</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">학원지원금</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">판매가</th>
                           <th className="text-center text-gray-400 py-2.5 px-3">관리</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {products.map((p, idx) => {
-                          const prices = calculatePrice(p.listPrice);
-                          return (
+                        {products.map((p, idx) => (
                           <motion.tr key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
-                            className={`border-b border-white/20 hover:bg-white/20 transition-colors ${editingProductId === p.id ? "bg-amber-50/30" : ""}`}>
+                            className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${editingProductId === p.id ? "bg-amber-50" : ""}`}>
                             <td className="py-2.5 px-3 font-mono text-gray-500 text-[12px]">{p.isbn}</td>
                             <td className="py-2.5 px-3 text-gray-700">{p.name}</td>
                             <td className="py-2.5 px-3 text-gray-500">{p.publisher}</td>
                             <td className="py-2.5 px-3 text-right text-gray-500">{formatWon(p.listPrice)}</td>
-                            <td className="py-2.5 px-3 text-right text-red-500">-{formatWon(prices.listPrice - prices.discountedPrice)}</td>
-                            <td className="py-2.5 px-3 text-right text-emerald-600">-{formatWon(prices.schoolSupport)}</td>
-                            <td className="py-2.5 px-3 text-right text-indigo-600">{formatWon(prices.finalPrice)}</td>
                             <td className="py-2.5 px-3 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" onClick={() => startEditProduct(p)} className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-amber-500 hover:bg-amber-50/50 transition-colors cursor-pointer">
@@ -605,10 +570,9 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               </div>
                             </td>
                           </motion.tr>
-                          );
-                        })}
+                        ))}
                         {products.length === 0 && (
-                          <tr><td colSpan={8} className="text-center py-8 text-gray-400 text-[13px]">등록된 상품이 없습니다. 위 폼에서 상품을 등록하세요.</td></tr>
+                          <tr><td colSpan={5} className="text-center py-8 text-gray-400 text-[13px]">등록된 상품이 없습니다. 위 폼에서 상품을 등록하세요.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -649,25 +613,12 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                         </div>
                         {setSelectedIds.length > 0 && (() => {
                           const totalList = products.filter((p) => setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0);
-                          const prices = calculatePrice(totalList);
                           return (
                             <div className="rounded-lg border border-indigo-100/50 bg-indigo-50/20 p-2.5 space-y-1">
-                              <p className="text-[11px] text-indigo-500 font-medium mb-1">자동 계산 (할인율 10% 고정)</p>
-                              <div className="flex justify-between text-[11px]">
-                                <span className="text-gray-500">정가 합계</span>
-                                <span className="text-gray-700">{formatWon(totalList)}</span>
-                              </div>
-                              <div className="flex justify-between text-[11px]">
-                                <span className="text-gray-500">할인금액</span>
-                                <span className="text-red-500">-{formatWon(prices.listPrice - prices.discountedPrice)}</span>
-                              </div>
-                              <div className="flex justify-between text-[11px]">
-                                <span className="text-gray-500">학원지원금</span>
-                                <span className="text-emerald-600">-{formatWon(prices.schoolSupport)}</span>
-                              </div>
-                              <div className="flex justify-between text-[12px] pt-1 border-t border-indigo-100/40">
-                                <span className="text-gray-600 font-medium">최종판매가</span>
-                                <span className="text-indigo-600 font-bold">{formatWon(prices.finalPrice)}</span>
+                              <p className="text-[11px] text-indigo-500 font-medium mb-1">세트 정가 합계</p>
+                              <div className="flex justify-between text-[12px]">
+                                <span className="text-gray-600 font-medium">정가 합계</span>
+                                <span className="text-indigo-600 font-bold">{formatWon(totalList)}</span>
                               </div>
                             </div>
                           );
@@ -676,8 +627,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
 
                       {/* Dual list */}
                       <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-start">
-                        <div className="rounded-xl border border-white/40 bg-white/20 backdrop-blur-sm overflow-hidden flex flex-col">
-                          <div className="px-3 py-2.5 border-b border-white/30 bg-white/10">
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex flex-col">
+                          <div className="px-3 py-2.5 border-b border-gray-200">
                             <p className="text-gray-500 text-[12px]">등록된 단품 상품</p>
                           </div>
                           <div className="h-[360px] overflow-y-auto">
@@ -685,7 +636,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               <button key={p.id} type="button" onClick={() => {
                                 const newIds = [...setSelectedIds, p.id];
                                 setSetSelectedIds(newIds);
-                              }} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-indigo-50/30 transition-colors cursor-pointer border-b border-white/10 last:border-0">
+                              }} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-indigo-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0">
                                 <span className="text-gray-700 text-[13px] truncate flex-1">{p.name}</span>
                                 <span className="text-gray-400 text-[11px] shrink-0">{formatWon(p.listPrice)}</span>
                               </button>
@@ -694,7 +645,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               <p className="text-gray-400 text-[12px] text-center py-6">모든 상품이 선택됨</p>
                             )}
                           </div>
-                          <div className="px-3 py-2 border-t border-white/30 bg-white/10 flex items-center justify-between shrink-0">
+                          <div className="px-3 py-2 border-t border-gray-200 flex items-center justify-between shrink-0">
                             <span className="text-gray-400 text-[11px]">정가 총계</span>
                             <span className="text-gray-600 text-[12px]">{formatWon(products.filter((p) => !setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0))}</span>
                           </div>
@@ -731,17 +682,13 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
 
                       {setSelectedIds.length > 0 && (() => {
                         const totalList = products.filter((p) => setSelectedIds.includes(p.id)).reduce((s, p) => s + p.listPrice, 0);
-                        const prices = calculatePrice(totalList);
                         return (
                         <div className="flex items-center justify-between px-1">
                           <span className="text-gray-500 text-[13px]">
-                            정가: {formatWon(totalList)}
-                            <span className="ml-2 text-red-500">할인: -{formatWon(prices.listPrice - prices.discountedPrice)}</span>
-                            <span className="ml-2 text-emerald-600">지원: -{formatWon(prices.schoolSupport)}</span>
-                            <span className="ml-2 text-indigo-600 font-medium">판매가: {formatWon(prices.finalPrice)}</span>
+                            정가 합계: <span className="text-indigo-600 font-medium">{formatWon(totalList)}</span>
                           </span>
                           <button type="button" onClick={handleSaveSet}
-                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2.5 text-white text-[14px] shadow-[0_4px_16px_rgba(99,102,241,0.25)] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">
+                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-5 py-2.5 text-white text-[14px] shadow-[0_4px_16px_rgba(56,189,248,0.25)] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">
                             <Checkmark24Regular className="w-4 h-4" />
                             {editingSetId ? "세트 수정" : "세트 생성"}
                           </button>
@@ -761,22 +708,17 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                   <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
                     <table className="w-full text-[13px]">
                       <thead>
-                        <tr className="border-b border-white/30">
-                          <th className="text-left text-gray-400 py-2.5 px-3">세트명</th>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left text-gray-500 py-2.5 px-3 font-semibold">세트명</th>
                           <th className="text-left text-gray-400 py-2.5 px-3">세트 목록</th>
                           <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">정가</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">할인금액</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">학원지원금</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3 whitespace-nowrap">판매가</th>
                           <th className="text-center text-gray-400 py-2.5 px-3 whitespace-nowrap">관리</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {sets.map((s, idx) => {
-                          const setPrices = calculatePrice(s.listPrice);
-                          return (
+                        {sets.map((s, idx) => (
                           <motion.tr key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-                            className={`border-b border-white/20 hover:bg-white/20 transition-colors ${editingSetId === s.id ? "bg-amber-50/30" : ""}`}>
+                            className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${editingSetId === s.id ? "bg-amber-50" : ""}`}>
                             <td className="py-3 px-3 text-gray-700 align-top whitespace-nowrap">
                               <div>
                                 <p>{s.name}</p>
@@ -791,9 +733,6 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               </div>
                             </td>
                             <td className="py-3 px-3 text-right text-gray-500 align-top whitespace-nowrap">{formatWon(s.listPrice)}</td>
-                            <td className="py-3 px-3 text-right text-red-500 align-top whitespace-nowrap">-{formatWon(setPrices.listPrice - setPrices.discountedPrice)}</td>
-                            <td className="py-3 px-3 text-right text-emerald-600 align-top whitespace-nowrap">-{formatWon(setPrices.schoolSupport)}</td>
-                            <td className="py-3 px-3 text-right text-indigo-600 align-top whitespace-nowrap">{formatWon(setPrices.finalPrice)}</td>
                             <td className="py-3 px-3 text-center align-top">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" onClick={() => startEditSet(s)} className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-amber-500 hover:bg-amber-50/50 transition-colors cursor-pointer">
@@ -805,10 +744,9 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                               </div>
                             </td>
                           </motion.tr>
-                          );
-                        })}
+                        ))}
                         {sets.length === 0 && (
-                          <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-[13px]">등록된 세트가 없습니다.</td></tr>
+                          <tr><td colSpan={3} className="text-center py-8 text-gray-400 text-[13px]">등록된 세트가 없습니다.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -835,7 +773,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                     </h3>
                     <div className="flex gap-2">
                       <button type="button" onClick={() => exportProductsToExcel(products)}
-                        className="flex items-center gap-1.5 rounded-lg border border-white/40 bg-white/30 px-3 py-1.5 text-gray-600 text-[12px] hover:bg-white/50 transition-colors cursor-pointer">
+                        className="flex items-center gap-1.5 rounded-lg bg-emerald-500/15 border border-emerald-300/50 px-3 py-1.5 text-emerald-700 text-[12px] hover:bg-emerald-500/25 transition-colors cursor-pointer">
                         <ArrowDownload24Regular className="w-3.5 h-3.5" />
                         엑셀 다운로드
                       </button>
@@ -852,8 +790,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                   <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
                     <table className="w-full text-[13px]">
                       <thead className="sticky top-0 z-10 bg-white/60 backdrop-blur-sm">
-                        <tr className="border-b border-white/30">
-                          <th className="text-center text-gray-400 py-2.5 px-2 w-[36px]">
+                        <tr className="border-b border-gray-200">
+                          <th className="text-center text-gray-500 py-2.5 px-2 w-[36px]">
                             <input type="checkbox" checked={checkedProductIds.length === products.length && products.length > 0}
                               onChange={toggleAllProducts}
                               className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
@@ -862,17 +800,12 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                           <th className="text-left text-gray-400 py-2.5 px-3">상품명</th>
                           <th className="text-left text-gray-400 py-2.5 px-3">출판사</th>
                           <th className="text-right text-gray-400 py-2.5 px-3">정가</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">할인금액</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">학원지원금</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">판매가</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {products.map((p) => {
-                          const listPrices = calculatePrice(p.listPrice);
-                          return (
+                        {products.map((p) => (
                           <tr key={p.id}
-                            className="border-b border-white/20 hover:bg-indigo-50/20 transition-colors cursor-pointer select-none">
+                            className="border-b border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer select-none">
                             <td className="py-2.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
                               <input type="checkbox" checked={checkedProductIds.includes(p.id)}
                                 onChange={() => toggleCheckProduct(p.id)}
@@ -882,12 +815,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                             <td className="py-2.5 px-3 text-gray-700" onClick={() => setDetailProduct(p)}>{p.name}</td>
                             <td className="py-2.5 px-3 text-gray-500" onClick={() => setDetailProduct(p)}>{p.publisher}</td>
                             <td className="py-2.5 px-3 text-right text-gray-500" onClick={() => setDetailProduct(p)}>{formatWon(p.listPrice)}</td>
-                            <td className="py-2.5 px-3 text-right text-red-500" onClick={() => setDetailProduct(p)}>-{formatWon(listPrices.listPrice - listPrices.discountedPrice)}</td>
-                            <td className="py-2.5 px-3 text-right text-emerald-600" onClick={() => setDetailProduct(p)}>-{formatWon(listPrices.schoolSupport)}</td>
-                            <td className="py-2.5 px-3 text-right text-indigo-600" onClick={() => setDetailProduct(p)}>{formatWon(listPrices.finalPrice)}</td>
                           </tr>
-                          );
-                        })}
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -912,8 +841,8 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                   <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
                     <table className="w-full text-[13px]">
                       <thead className="sticky top-0 z-10 bg-white/60 backdrop-blur-sm">
-                        <tr className="border-b border-white/30">
-                          <th className="text-center text-gray-400 py-2.5 px-2 w-[36px]">
+                        <tr className="border-b border-gray-200">
+                          <th className="text-center text-gray-500 py-2.5 px-2 w-[36px]">
                             <input type="checkbox" checked={checkedSetIds.length === sets.length && sets.length > 0}
                               onChange={toggleAllSets}
                               className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
@@ -921,17 +850,12 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                           <th className="text-left text-gray-400 py-2.5 px-3">세트명</th>
                           <th className="text-center text-gray-400 py-2.5 px-3">구성 상품수</th>
                           <th className="text-right text-gray-400 py-2.5 px-3">정가 합계</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">할인금액</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">학원지원금</th>
-                          <th className="text-right text-gray-400 py-2.5 px-3">판매가</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {sets.map((s) => {
-                          const sp = calculatePrice(s.listPrice);
-                          return (
+                        {sets.map((s) => (
                           <tr key={s.id}
-                            className="border-b border-white/20 hover:bg-indigo-50/20 transition-colors cursor-pointer select-none">
+                            className="border-b border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer select-none">
                             <td className="py-2.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
                               <input type="checkbox" checked={checkedSetIds.includes(s.id)}
                                 onChange={() => toggleCheckSet(s.id)}
@@ -940,14 +864,10 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                             <td className="py-2.5 px-3 text-gray-700" onClick={() => setDetailSet(s)}>{s.name}</td>
                             <td className="py-2.5 px-3 text-center text-gray-500" onClick={() => setDetailSet(s)}>{s.items.length}개</td>
                             <td className="py-2.5 px-3 text-right text-gray-500" onClick={() => setDetailSet(s)}>{formatWon(s.listPrice)}</td>
-                            <td className="py-2.5 px-3 text-right text-red-500" onClick={() => setDetailSet(s)}>-{formatWon(sp.listPrice - sp.discountedPrice)}</td>
-                            <td className="py-2.5 px-3 text-right text-emerald-600" onClick={() => setDetailSet(s)}>-{formatWon(sp.schoolSupport)}</td>
-                            <td className="py-2.5 px-3 text-right text-indigo-600" onClick={() => setDetailSet(s)}>{formatWon(sp.finalPrice)}</td>
                           </tr>
-                          );
-                        })}
+                        ))}
                         {sets.length === 0 && (
-                          <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-[13px]">등록된 세트가 없습니다.</td></tr>
+                          <tr><td colSpan={4} className="text-center py-8 text-gray-400 text-[13px]">등록된 세트가 없습니다.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -981,7 +901,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
             onClick={() => setDetailProduct(null)}>
             <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }} transition={{ type: "spring", damping: 30, stiffness: 260 }}
-              className="relative rounded-2xl border border-white/30 bg-white/70 backdrop-blur-xl shadow-[0_16px_64px_rgba(0,0,0,0.15)] p-6 w-full max-w-md mx-4"
+              className="relative rounded-2xl border border-gray-200 bg-white shadow-[0_16px_64px_rgba(0,0,0,0.15)] p-6 w-full max-w-md mx-4"
               onClick={(e) => e.stopPropagation()}>
               <button type="button" onClick={() => setDetailProduct(null)}
                 className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100/50 hover:text-gray-600 cursor-pointer transition-colors">
@@ -1000,16 +920,10 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
               </div>
               <table className="w-full text-[13px]">
                 <tbody>
-                  {(() => {
-                    const dp = calculatePrice(detailProduct.listPrice);
-                    return [
-                      ["ISBN", detailProduct.isbn],
-                      ["정가", formatWon(detailProduct.listPrice)],
-                      ["할인금액(10%)", `-${formatWon(dp.listPrice - dp.discountedPrice)}`],
-                      ["학원지원금", `-${formatWon(dp.schoolSupport)}`],
-                      ["최종판매가", formatWon(dp.finalPrice)],
-                    ] as [string, string][];
-                  })().map(([label, val]) => (
+                  {([
+                    ["ISBN", detailProduct.isbn],
+                    ["정가", formatWon(detailProduct.listPrice)],
+                  ] as [string, string][]).map(([label, val]) => (
                     <tr key={label} className="border-b border-gray-100/50">
                       <td className="py-2 text-gray-400 w-[80px]">{label}</td>
                       <td className="py-2 text-gray-700 font-mono">{val}</td>
@@ -1035,7 +949,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
             onClick={() => setDetailSet(null)}>
             <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }} transition={{ type: "spring", damping: 30, stiffness: 260 }}
-              className="relative rounded-2xl border border-white/30 bg-white/70 backdrop-blur-xl shadow-[0_16px_64px_rgba(0,0,0,0.15)] p-6 w-full max-w-xl mx-4"
+              className="relative rounded-2xl border border-gray-200 bg-white shadow-[0_16px_64px_rgba(0,0,0,0.15)] p-6 w-full max-w-xl mx-4"
               onClick={(e) => e.stopPropagation()}>
               <button type="button" onClick={() => setDetailSet(null)}
                 className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100/50 hover:text-gray-600 cursor-pointer transition-colors">
@@ -1044,22 +958,14 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
               <div className="mb-4">
                 <span className="text-purple-500 text-[11px] px-2 py-0.5 rounded-full bg-purple-50/50 border border-purple-100/50">세트</span>
                 <h3 className="text-gray-800 mt-1.5">{detailSet.name}</h3>
-                {(() => {
-                  const sdp = calculatePrice(detailSet.listPrice);
-                  return (
-                  <div className="flex items-center gap-4 text-[13px] mt-1">
-                    <span className="text-gray-400 line-through">{formatWon(detailSet.listPrice)}</span>
-                    <span className="text-red-500 text-[11px]">할인 -{formatWon(sdp.listPrice - sdp.discountedPrice)}</span>
-                    <span className="text-emerald-600 text-[11px]">지원금 -{formatWon(sdp.schoolSupport)}</span>
-                    <span className="text-indigo-600 font-medium">{formatWon(sdp.finalPrice)}</span>
-                  </div>
-                  );
-                })()}
+                <div className="flex items-center gap-2 text-[13px] mt-1">
+                  <span className="text-indigo-600 font-medium">정가 합계: {formatWon(detailSet.listPrice)}</span>
+                </div>
               </div>
               <p className="text-gray-500 text-[12px] mb-3">구성 상품 ({detailSet.items.length}개)</p>
               <div className="space-y-2.5 max-h-[320px] overflow-y-auto">
                 {detailSet.items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 rounded-xl border border-white/40 bg-white/30 backdrop-blur-sm p-3">
+                  <div key={item.id} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
                     <div className="w-[50px] h-[68px] rounded-lg bg-indigo-50/50 border border-indigo-100/50 overflow-hidden shrink-0">
                       <img src={getBookImageUrl(item.isbn)} alt={item.name} className="w-full h-full object-cover"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
@@ -1069,8 +975,7 @@ export function AdminProductManagement({ onBack }: AdminProductManagementProps) 
                       <p className="text-gray-400 text-[11px]">{item.publisher} &middot; ISBN: {item.isbn}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-gray-400 text-[11px] line-through">{formatWon(item.listPrice)}</p>
-                      <p className="text-indigo-600 text-[13px]">{formatWon(calculatePrice(item.listPrice).finalPrice)}</p>
+                      <p className="text-indigo-600 text-[13px]">{formatWon(item.listPrice)}</p>
                     </div>
                   </div>
                 ))}

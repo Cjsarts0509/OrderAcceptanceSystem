@@ -16,6 +16,7 @@ import {
   createOrderRemote,
   lookupOrdersRemote,
   deleteOrderRemote,
+  updateOrderRemote,
 } from "./api";
 
 /* ───── Product Types ───── */
@@ -196,6 +197,21 @@ export async function deleteOrder(orderNumber: string): Promise<OrderData[]> {
   const cached = readCache<OrderData>(KEYS.orders).filter((o) => o.orderNumber !== orderNumber);
   writeCache(KEYS.orders, cached);
   return cached;
+}
+
+export async function updateOrder(orderNumber: string, fields: Partial<OrderData>): Promise<OrderData | null> {
+  try {
+    const updated = await updateOrderRemote(orderNumber, fields);
+    // 캐시 업데이트
+    const cached = readCache<OrderData>(KEYS.orders).map((o) =>
+      o.orderNumber === orderNumber ? { ...o, ...fields } : o
+    );
+    writeCache(KEYS.orders, cached);
+    return updated as OrderData;
+  } catch (e) {
+    console.error("[dataStore] updateOrder remote failed:", e);
+    return null;
+  }
 }
 
 /* ═══════════════════════════════════════════════

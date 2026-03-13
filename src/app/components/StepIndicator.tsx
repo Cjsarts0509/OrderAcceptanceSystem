@@ -31,7 +31,7 @@ export function StepIndicator({ currentStep, onStepClick }: StepIndicatorProps) 
             {index > 0 && (
               <div
                 className={`h-[2px] flex-1 rounded-full transition-colors duration-300 ${
-                  isDone ? "bg-indigo-400" : "bg-white/30"
+                  isDone ? "bg-indigo-600" : "bg-gray-200"
                 }`}
               />
             )}
@@ -42,10 +42,10 @@ export function StepIndicator({ currentStep, onStepClick }: StepIndicatorProps) 
                 disabled={!isClickable}
                 className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300 ${
                   isActive
-                    ? "border-indigo-400 bg-indigo-500/20 text-indigo-500 shadow-[0_0_16px_rgba(99,102,241,0.25)]"
+                    ? "border-indigo-500 bg-indigo-50 text-indigo-600 shadow-[0_0_16px_rgba(79,70,229,0.25)]"
                     : isDone
-                    ? "border-indigo-400 bg-indigo-500 text-white"
-                    : "border-white/30 bg-white/20 text-gray-400"
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-gray-200 bg-gray-50 text-gray-300"
                 } ${isClickable ? "cursor-pointer hover:scale-110 active:scale-95" : "cursor-default"}`}
               >
                 {isDone ? (
@@ -55,8 +55,8 @@ export function StepIndicator({ currentStep, onStepClick }: StepIndicatorProps) 
                 )}
               </button>
               <span
-                className={`text-[11px] whitespace-nowrap transition-colors duration-300 ${
-                  isActive ? "text-indigo-500" : isDone ? "text-indigo-400" : "text-gray-400"
+                className={`text-[11px] font-semibold whitespace-nowrap transition-colors duration-300 ${
+                  isActive ? "text-indigo-600" : isDone ? "text-indigo-500" : "text-gray-400"
                 }`}
               >
                 {step.label}

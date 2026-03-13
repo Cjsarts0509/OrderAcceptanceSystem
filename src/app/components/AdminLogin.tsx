@@ -38,10 +38,10 @@ export function AdminLogin({ onBack, onSuccess }: AdminLoginProps) {
       className="space-y-5"
     >
       <div className="text-center">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-100/60 mb-3">
-          <LockClosed24Regular className="text-slate-600 w-7 h-7" />
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-100 mb-3">
+          <LockClosed24Regular className="text-indigo-600 w-7 h-7" />
         </div>
-        <h3 className="text-gray-800">관리자 인증</h3>
+        <h3 className="text-gray-900">관리자 인증</h3>
         <p className="text-gray-500 text-[13px] mt-1">
           관리자 비밀번호를 입력해 주세요.
         </p>
@@ -53,7 +53,7 @@ export function AdminLogin({ onBack, onSuccess }: AdminLoginProps) {
           transition={{ duration: 0.4 }}
         >
           <div className="relative">
-            <LockClosed24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <LockClosed24Regular className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
             <input
               type="password"
               value={password}
@@ -62,22 +62,22 @@ export function AdminLogin({ onBack, onSuccess }: AdminLoginProps) {
                 setError("");
               }}
               placeholder="비밀번호 입력"
-              className={`w-full rounded-xl border bg-white/40 backdrop-blur-sm py-3 pl-10 pr-4 text-gray-700 placeholder:text-gray-400 outline-none transition-all focus:ring-2 ${
+              className={`w-full rounded-xl border bg-white/80 backdrop-blur-sm py-3 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:ring-2 ${
                 error
-                  ? "border-red-300 focus:border-red-300 focus:ring-red-200/40"
-                  : "border-white/40 focus:border-indigo-300 focus:ring-indigo-200/40"
+                  ? "border-red-400 focus:border-red-400 focus:ring-red-500/25"
+                  : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-500/25"
               }`}
               autoFocus
             />
           </div>
           {error && (
-            <p className="text-red-500 text-[13px] mt-2 text-center">{error}</p>
+            <p className="text-red-600 text-[13px] font-medium mt-2 text-center">{error}</p>
           )}
         </motion.div>
 
         <button
           type="submit"
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 py-3 text-white shadow-[0_4px_16px_rgba(51,65,85,0.3)] transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-white shadow-[0_4px_16px_rgba(79,70,229,0.3)] transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
         >
           <ShieldCheckmark24Regular className="w-4 h-4" />
           인증하기
@@ -87,7 +87,7 @@ export function AdminLogin({ onBack, onSuccess }: AdminLoginProps) {
       <button
         type="button"
         onClick={onBack}
-        className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-white/40 bg-white/20 py-2.5 text-gray-500 text-[14px] hover:bg-white/40 transition-colors cursor-pointer"
+        className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white py-2.5 text-gray-600 text-[14px] hover:bg-gray-50 transition-colors cursor-pointer"
       >
         <ArrowLeft24Regular className="w-4 h-4" />
         메인으로 돌아가기

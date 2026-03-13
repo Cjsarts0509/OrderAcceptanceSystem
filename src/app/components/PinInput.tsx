@@ -38,7 +38,7 @@ export function PinInput({ value, onChange }: PinInputProps) {
           value={digits[i]?.trim() || ""}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
-          className="w-12 h-14 rounded-xl border border-white/40 bg-white/40 backdrop-blur-sm text-center text-gray-700 text-[20px] outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200/40"
+          className="w-12 h-14 rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm text-center text-gray-900 text-[20px] font-bold outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25"
         />
       ))}
     </div>

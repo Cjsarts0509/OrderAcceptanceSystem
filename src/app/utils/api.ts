@@ -84,6 +84,17 @@ export async function updateOrderRemote(
   return res.data;
 }
 
+/** 주문번호 기준 일괄 업데이트 (송장 등록 등) */
+export async function bulkUpdateOrdersRemote(
+  updates: { orderNumber: string; fields: Record<string, any> }[]
+) {
+  const res = await request<{ ok: boolean; results: any[] }>("/orders/bulk-update", {
+    method: "PUT",
+    body: JSON.stringify({ updates }),
+  });
+  return res.results;
+}
+
 export async function lookupOrdersRemote(phone: string, pin: string) {
   const res = await request<{ data: any[] }>("/orders/lookup", {
     method: "POST",

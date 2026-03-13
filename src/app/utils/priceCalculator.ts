@@ -1,51 +1,25 @@
 /**
- * 상품 가격 계산 유틸리티
+ * 상품 가격 계산 유틸리티 (주문 단위 계산)
  * 
- * 판매가 책정 방식:
- * - 정가 = 상품정가
- * - 할인가 = 상품정가 * 0.9
- * - 학원지원금 = 할인가 * 0.1 / 천원단위 절삭
- * - 최종판매가 = 할인가 - 학원지원금
+ * 가격 계산은 개별 상품이 아닌 주문(장바구니) 총계 기준으로 수행됩니다.
  * 
- * 예시:
- * - 정가: 25,000원
- * - 할인가: 22,500원 (정가 × 0.9)
- * - 학원지원금: 2,000원 (2,250원 → 천원단위 절삭)
- * - 최종 구매가: 20,500원
+ * - 정가 합계 = 장바구니 내 모든 상품의 정가 × 수량 합산
+ * - 할인가 합계 = 정가 합계 × 0.9
+ * - 학원지원금 = 할인가 합계 × 0.1 / 천원단위 절삭
+ * - 최종판매가 = 할인가 합계 - 학원지원금
+ * 
+ * 예시 (총 정가 합계 50,000원):
+ * - 할인가: 45,000원 (정가 × 0.9)
+ * - 학원지원금: 4,000원 (4,500원 → 천원단위 절삭)
+ * - 최종 판매가: 41,000원
  */
 
 export interface PriceBreakdown {
-  listPrice: number;        // 정가
-  discountedPrice: number;  // 할인가 (10% 할인)
+  listPrice: number;        // 정가 합계
+  discountedPrice: number;  // 할인가 합계 (10% 할인)
   schoolSupport: number;    // 학원지원금 (천원단위 절삭)
   finalPrice: number;       // 최종판매가
-  discountAmount: number;   // 할인금액 (정가 - 최종판매가)
-}
-
-/**
- * 정가를 기준으로 모든 가격 정보를 계산
- */
-export function calculatePrice(listPrice: number): PriceBreakdown {
-  // 할인가 = 정가 × 0.9
-  const discountedPrice = Math.round(listPrice * 0.9);
-  
-  // 학원지원금 = 할인가 × 0.1 / 천원단위 절삭
-  const schoolSupportRaw = discountedPrice * 0.1;
-  const schoolSupport = Math.floor(schoolSupportRaw / 1000) * 1000;
-  
-  // 최종판매가 = 할인가 - 학원지원금
-  const finalPrice = discountedPrice - schoolSupport;
-  
-  // 할인금액 = 정가 - 최종판매가
-  const discountAmount = listPrice - finalPrice;
-  
-  return {
-    listPrice,
-    discountedPrice,
-    schoolSupport,
-    finalPrice,
-    discountAmount,
-  };
+  discountAmount: number;   // 총 할인금액 (정가 - 최종판매가)
 }
 
 /**
@@ -56,23 +30,26 @@ export function formatWon(amount: number): string {
 }
 
 /**
- * 여러 상품의 총액을 계산
+ * 주문(장바구니) 총계 기준으로 가격 계산
+ * 개별 상품이 아닌 총 정가 합계를 기준으로 할인/지원금을 산출
  */
 export function calculateTotalPrice(
   items: Array<{ listPrice: number; quantity: number }>
 ): PriceBreakdown {
-  let totalListPrice = 0;
-  let totalDiscountedPrice = 0;
-  let totalSchoolSupport = 0;
+  // 1. 정가 합계
+  const totalListPrice = items.reduce((sum, item) => sum + item.listPrice * item.quantity, 0);
   
-  for (const item of items) {
-    const prices = calculatePrice(item.listPrice);
-    totalListPrice += prices.listPrice * item.quantity;
-    totalDiscountedPrice += prices.discountedPrice * item.quantity;
-    totalSchoolSupport += prices.schoolSupport * item.quantity;
-  }
+  // 2. 할인가 = 정가 합계 × 0.9
+  const totalDiscountedPrice = Math.round(totalListPrice * 0.9);
   
+  // 3. 학원지원금 = 할인가 합계 × 0.1 / 천원단위 절삭
+  const schoolSupportRaw = totalDiscountedPrice * 0.1;
+  const totalSchoolSupport = Math.floor(schoolSupportRaw / 1000) * 1000;
+  
+  // 4. 최종판매가 = 할인가 - 학원지원금
   const totalFinalPrice = totalDiscountedPrice - totalSchoolSupport;
+  
+  // 5. 총 할인금액 = 정가 - 최종판매가
   const totalDiscountAmount = totalListPrice - totalFinalPrice;
   
   return {
@@ -82,4 +59,34 @@ export function calculateTotalPrice(
     finalPrice: totalFinalPrice,
     discountAmount: totalDiscountAmount,
   };
+}
+
+/**
+ * 학원지원금을 상품별로 비례 배분
+ * 총 학원지원금을 각 상품의 정가 비율에 따라 분배
+ * 나눠떨어지지 않는 경우 마지막 상품에 차이를 반영
+ */
+export function distributeSchoolSupport(
+  items: Array<{ listPrice: number; quantity: number }>,
+  totalSchoolSupport: number
+): number[] {
+  const totalListPrice = items.reduce((sum, item) => sum + item.listPrice * item.quantity, 0);
+  if (totalListPrice === 0) return items.map(() => 0);
+
+  const distributed: number[] = [];
+  let allocated = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const itemTotal = items[i].listPrice * items[i].quantity;
+    if (i === items.length - 1) {
+      // 마지막 항목: 나머지 차액 보정
+      distributed.push(totalSchoolSupport - allocated);
+    } else {
+      const share = Math.round(totalSchoolSupport * (itemTotal / totalListPrice));
+      distributed.push(share);
+      allocated += share;
+    }
+  }
+
+  return distributed;
 }

@@ -8,7 +8,7 @@ interface GlassPanelProps {
 export function GlassPanel({ children, className = "" }: GlassPanelProps) {
   return (
     <div
-      className={`rounded-2xl border border-white/30 bg-white/50 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] ${className}`}
+      className={`rounded-2xl border border-gray-200 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.06)] ${className}`}
     >
       {children}
     </div>
